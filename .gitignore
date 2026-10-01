@@ -1,0 +1,19 @@
+node_modules
+dist
+build
+dist-ssr
+*.tsbuildinfo
+.DS_Store
+*.local
+.env
+.vite
+.playwright-mcp
+*.log
+
+# 压缩脚本日志
+scripts/compress-media.log
+
+# 本地工具与部署产物
+.claude/
+deploy/
+.codex-run-local.mjs

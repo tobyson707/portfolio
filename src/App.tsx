@@ -1,0 +1,353 @@
+import React, { Suspense, useRef, useEffect, useState } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from 'framer-motion'
+import * as THREE from 'three'
+import Scene from './scene/Scene'
+import Resume from './ui/Resume'
+import EditorialStats from './ui/EditorialStats'
+import Works from './ui/Works'
+import LoadingScreen from './ui/LoadingScreen'
+import SoundControl from './ui/SoundControl'
+import NavigationMenu from './ui/NavigationMenu'
+import AboutPage from './ui/AboutPage'
+import ThemeToggle from './ui/ThemeToggle'
+import { useStore } from './store'
+import { SITE_CONTENT } from './data/siteContent'
+import AdminApp from './admin/AdminApp'
+import { useContentStore } from './services/contentStore'
+import {
+  initAnalytics,
+  trackPageView,
+  trackScrollMilestone,
+  recordEngagementTime,
+} from './services/analytics'
+
+class CanvasErrorBoundary extends React.Component<
+  { fallback?: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.warn('[TOBI XP] 3D Canvas error caught by boundary:', error, errorInfo)
+    try {
+      useStore.getState().setHeroModelReady(true)
+    } catch {
+      // ignore
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || null
+    }
+    return this.props.children
+  }
+}
+
+function Backdrop() {
+  // 点击空白处收起详情
+  const setActive = useStore((s) => s.setActive)
+  return (
+    <mesh position={[0, 0, -40]} onClick={() => setActive(null)}>
+      <planeGeometry args={[600, 300]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+    </mesh>
+  )
+}
+
+function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
+  const heroContent = useContentStore((s) => s.site.hero)
+  return (
+    <section className="hero" id="home">
+      {/* 巨大层叠艺术字体：TOBI + 身份标签，XP + I MAKE STUFF... (Hero Foreground Layer) */}
+      <div className="hero-giant-typography" aria-hidden="true">
+        <div className="hgt-tobi-wrap">
+          <span className="hgt-tobi">TOBI</span>
+          <span className="hgt-role-under">
+            ILLUSTRATOR <span className="hgt-amp">&</span> DESIGNER
+          </span>
+        </div>
+        <div className="hgt-xp-wrap">
+          <span className="hgt-xp">XP</span>
+          <div className="hgt-statement-annotation">
+            <p style={{ whiteSpace: 'pre-line' }}>
+              {heroContent.heroStatement || `UHMMM... I DIDN’T REALLY\nKNOW WHAT TO PUT HERE,\nSO THIS IS WHAT WE’RE\nGOING WITH LOL`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 顶部中心微标语 */}
+      <div className="hero-micro top-center">
+        <span>{heroContent.microCopyTop || 'FIGURING IT OUT AS I GO.'}</span>
+        <span className="micro-dot-orange" />
+      </div>
+
+      {/* 左侧微标语 */}
+      <div className="hero-micro left-side">
+        <div className="crosshair-marker">+</div>
+        <p className="hero-bio-lines" style={{ whiteSpace: 'pre-line' }}>
+          {heroContent.microCopyLeft || 'I DRAW.\nI DESIGN.\nI BUILD THINGS.'}
+        </p>
+        <span className="micro-line" />
+      </div>
+
+      {/* 角色旁微标语 */}
+      <div className="hero-micro near-character">
+        <div className="crosshair-marker">+</div>
+        <p className="hero-interact-hint" style={{ whiteSpace: 'pre-line' }}>
+          {heroContent.microCopyHint || 'GO AHEAD.\nMOVE IT.'}
+        </p>
+      </div>
+
+      {/* 底部居中精致滚动指示器 */}
+      <motion.div
+        className="scroll-cue"
+        style={{ opacity: cueOpacity }}
+        onClick={() => {
+          const worksEl = document.getElementById('works') || document.querySelector('#works')
+          if (worksEl) {
+            worksEl.scrollIntoView({ behavior: 'smooth' })
+          } else {
+            window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Scroll to content"
+      >
+        <svg className="scroll-mouse-icon" viewBox="0 0 24 36" width="22" height="32" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="30" rx="9" strokeWidth="2" />
+          <circle className="scroll-mouse-wheel" cx="12" cy="10" r="2.5" fill="currentColor" stroke="none" />
+        </svg>
+        <span className="scroll-cue-label">SCROLL</span>
+      </motion.div>
+    </section>
+  )
+}
+
+function HomeView() {
+  const theme = useStore((s) => s.theme)
+  const heroContent = useContentStore((s) => s.site.hero)
+  const { scrollY } = useScroll()
+
+  // 作品区蒙层：以作品区顶部从视口底进入到视口中部的进度，驱动 3D 柔化
+  const worksRef = useRef<HTMLElement>(null)
+  const { scrollYProgress: worksProgress } = useScroll({
+    target: worksRef,
+    offset: ['start end', 'start center'],
+  })
+  const isDark = theme === 'dark'
+  const fogBg = useTransform(
+    worksProgress,
+    [0, 1],
+    isDark
+      ? ['rgba(13, 13, 15, 0)', 'rgba(13, 13, 15, 0.5)']
+      : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.18)']
+  )
+  // 滚动后轻柔提亮背景，保证履历文字可读
+  const scrimOpacity = useTransform(scrollY, [0, 520], [0, 0.4])
+  // 首屏滚动提示随之淡出
+  const cueOpacity = useTransform(scrollY, [0, 160], [1, 0])
+  // 磨砂右轨：进入履历区后淡入（首屏不磨砂）
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const railOpacity = useTransform(scrollY, [vh * 0.5, vh * 1.1], [0, 1])
+  // 首屏装饰画框/角标：滚动后淡出
+  const heroChromeOpacity = useTransform(scrollY, [0, 280], [1, 0])
+
+  return (
+    <motion.div
+      key="home-view"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+    >
+
+      {/* 固定的 3D 背景 (仅在首页视图时渲染与运行，极致性能优化) */}
+      <div className="scene-bg">
+        <CanvasErrorBoundary>
+          <Canvas
+            shadows={{ type: THREE.PCFShadowMap }}
+            dpr={[1, 1.5]}
+            camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
+            gl={{ alpha: true, antialias: false, stencil: false, depth: true, toneMapping: THREE.ACESFilmicToneMapping }}
+          >
+            <Suspense fallback={null}>
+              <Backdrop />
+              <Scene />
+            </Suspense>
+          </Canvas>
+        </CanvasErrorBoundary>
+      </div>
+
+      {/* 滚动渐暗蒙层 */}
+      <motion.div className="scrim" style={{ opacity: scrimOpacity }} aria-hidden="true" />
+
+      {/* 作品区固定蒙层 */}
+      <motion.div
+        className="stage-fog"
+        style={{ background: fogBg }}
+        aria-hidden="true"
+      />
+
+      {/* 固定磨砂右轨 */}
+      <motion.div className="glass-rail" style={{ opacity: railOpacity }} aria-hidden="true" />
+
+      {/* 首屏装饰：发丝内框 + 四角定位标 + 角标元数据 + 左上角主品牌 xp.png 徽标（随滚动淡出） */}
+      <motion.div className="hero-chrome" style={{ opacity: heroChromeOpacity }} aria-hidden="true">
+        <div className="hero-frame" />
+        <span className="hero-mark tl">+</span>
+        <span className="hero-mark tr">+</span>
+        <span className="hero-mark bl">+</span>
+        <span className="hero-mark br">+</span>
+        <div className="hero-meta hm-tl">
+          <img
+            src="/images/xp.png"
+            alt="TOBI XP"
+            className="hero-xp-logo"
+          />
+        </div>
+        <div className="hero-meta hm-bl">{heroContent.disciplines || SITE_CONTENT.hero.disciplines}</div>
+        <div className="hero-meta hm-right">{heroContent.statusLine || SITE_CONTENT.hero.statusLine}</div>
+      </motion.div>
+
+      {/* 可滚动内容 */}
+      <main className="content">
+        <Hero cueOpacity={cueOpacity} />
+        <Resume />
+        <EditorialStats />
+        <Works lang="en" innerRef={worksRef} />
+      </main>
+    </motion.div>
+  )
+}
+
+function PublicPortfolio() {
+  const currentView = useStore((s) => s.currentView)
+  const theme = useStore((s) => s.theme)
+  const setTheme = useStore((s) => s.setTheme)
+
+  // Initialize analytics & track views
+  useEffect(() => {
+    initAnalytics()
+  }, [])
+
+  useEffect(() => {
+    const pageName = currentView === 'about' ? 'About' : 'Home'
+    const pagePath = currentView === 'about' ? '/about' : '/'
+    trackPageView(pageName, pagePath)
+
+    const startTime = Date.now()
+    return () => {
+      const elapsedSeconds = (Date.now() - startTime) / 1000
+      if (elapsedSeconds > 1) {
+        recordEngagementTime(elapsedSeconds, pageName)
+      }
+    }
+  }, [currentView])
+
+  // Track meaningful scroll milestones on home page (25%, 50%, 75%, 90%)
+  useEffect(() => {
+    if (currentView !== 'home') return
+
+    const handleScroll = () => {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+      if (docHeight <= 0) return
+      const scrolled = (window.scrollY / docHeight) * 100
+
+      if (scrolled >= 90) {
+        trackScrollMilestone(90, 'Home')
+      } else if (scrolled >= 75) {
+        trackScrollMilestone(75, 'Home')
+      } else if (scrolled >= 50) {
+        trackScrollMilestone(50, 'Home')
+      } else if (scrolled >= 25) {
+        trackScrollMilestone(25, 'Home')
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [currentView])
+
+  // Theme persistence & system preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('tobi-xp-theme') as 'light' | 'dark' | null
+    if (savedTheme) {
+      setTheme(savedTheme)
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark')
+    }
+  }, [setTheme])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('tobi-xp-theme', theme)
+  }, [theme])
+
+  return (
+    <>
+      {/* 加载遮罩：模型全部加载完成前覆盖全屏，完成后淡出 */}
+      <LoadingScreen />
+
+      {/* 主视图切换：Home (3D 交互首页与作品集) vs About (3D 展台关于空间) */}
+      <AnimatePresence mode="wait">
+        {currentView === 'about' ? (
+          <motion.div
+            key="about-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <AboutPage />
+          </motion.div>
+        ) : (
+          <HomeView key="home-view" />
+        )}
+      </AnimatePresence>
+
+      {/* 顶部右侧常驻电影感导航菜单 (Navigation Menu) */}
+      <NavigationMenu />
+
+      {/* 底部右侧常驻声音控制 (Sound Control) */}
+      <div className="global-controls">
+        <ThemeToggle />
+        <SoundControl />
+      </div>
+    </>
+  )
+}
+
+export default function App() {
+  const [isAdminRoute, setIsAdminRoute] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const path = window.location.pathname
+    const hash = window.location.hash
+    return path.startsWith('/admin') || hash.startsWith('#/admin') || hash === '#admin'
+  })
+
+  useEffect(() => {
+    const checkRoute = () => {
+      const path = window.location.pathname
+      const hash = window.location.hash
+      setIsAdminRoute(path.startsWith('/admin') || hash.startsWith('#/admin') || hash === '#admin')
+    }
+
+    window.addEventListener('popstate', checkRoute)
+    window.addEventListener('hashchange', checkRoute)
+    return () => {
+      window.removeEventListener('popstate', checkRoute)
+      window.removeEventListener('hashchange', checkRoute)
+    }
+  }, [])
+
+  if (isAdminRoute) {
+    return <AdminApp />
+  }
+
+  return <PublicPortfolio />
+}

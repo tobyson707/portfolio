@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "tobyson707@gmail.com" ||
+        request.auth.token.email == "jh204222@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Site configuration and presentation sections (publicly readable for portfolio visitors)
+    match /site/{sectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Portfolio projects/works (publicly readable, admin mutable)
+    match /works/{workId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Categories for organizing portfolio items
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Work groups / subsections
+    match /workGroups/{groupId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Media library assets (publicly readable for display, admin mutable)
+    match /media/{mediaId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admin accounts
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() || (isSignedIn() && (request.auth.token.email == "tobyson707@gmail.com" || request.auth.token.email == "jh204222@gmail.com"));
+    }
+
+    // Public guestbook
+    match /guestbook/{entryId} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Connection validation test
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

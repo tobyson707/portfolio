@@ -1,0 +1,59 @@
+{
+  "hero": {
+    "title": "TOBI XP",
+    "role": "ILLUSTRATOR & DESIGNER",
+    "portfolioMeta": "Portfolio — 2026",
+    "disciplines": "Design · Art · Play",
+    "statusLine": "I Usually Just Cook",
+    "paragraphs": []
+  },
+  "resume": {
+    "title": "Résumé",
+    "entries": [
+      {
+        "period": "2026 – Present",
+        "place": "TBXP Studio",
+        "role": "Founder & Design Lead",
+        "points": [],
+        "links": []
+      },
+      {
+        "period": "2024 – 2026",
+        "place": "MIVA Learning Studio",
+        "role": "Illustrator & Designer",
+        "points": ["Designer (Simulation Developer & Creative Builder)"],
+        "links": []
+      },
+      {
+        "period": "2026",
+        "place": "NEQUINOX STUDIO LTD",
+        "role": "Game Concept Artist",
+        "points": [],
+        "links": []
+      },
+      {
+        "period": "2018 – Present",
+        "place": "TOBI XP",
+        "role": "Freelance Illustrator & Designer",
+        "points": [],
+        "links": [
+          {
+            "id": "instagram",
+            "label": "Instagram",
+            "href": "https://instagram.com/tobi.xp/"
+          }
+        ]
+      }
+    ]
+  },
+  "contact": {
+    "number": "05",
+    "title": "CONTACT ME",
+    "tagline": "Wanna say hi or work with me?",
+    "nameLabel": "Name",
+    "emailLabel": "Email",
+    "messageLabel": "Message",
+    "sendLabel": "Send message",
+    "recipientEmail": "businesstobixp@gmail.com"
+  }
+}

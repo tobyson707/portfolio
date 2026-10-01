@@ -1,0 +1,7 @@
+{
+  "name": "Remix portfolio",
+  "description": "Imported from GitHub: tobyson707/portfolio",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
