@@ -209,7 +209,7 @@ export default function ImageViewer({
                 className="wk-viewer-media-wrapper"
               >
                 <img
-                  src={currentImage.src}
+                  src={encodeURI(currentImage.src)}
                   alt={currentImage.title}
                   className="wk-viewer-img"
                   draggable={false}

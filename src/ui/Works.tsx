@@ -337,7 +337,7 @@ function WorkDetail({
                     }}
                   >
                     <img
-                      src={image.src}
+                      src={encodeURI(image.src)}
                       alt={image.title || 'Artwork thumbnail'}
                       className="wk-masonry-img"
                       draggable={false}
