@@ -1,10 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' data: blob: https: wss:; worker-src 'self' blob:;" />
     
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('tobi-xp-theme') || localStorage.getItem('theme');
+          var theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+
     <title>Tobi XP | Illustrator & Designer</title>
     <meta name="description" content="Creative portfolio showcasing illustration, character design, product design, UI/UX, simulation development, and visual storytelling work by Tobi XP." />
     <link rel="canonical" href="https://tobixp.com/" />

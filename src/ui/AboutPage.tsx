@@ -3,7 +3,6 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, useGLTF, Center } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as THREE from 'three'
-import TypingNarrative from './TypingNarrative'
 import { useStore } from '../store'
 import { useContentStore } from '../services/contentStore'
 import {
@@ -504,9 +503,11 @@ export default function AboutPage({ onClose }: AboutPageProps) {
               {about.heading}
             </h1>
 
-            <TypingNarrative paragraphs={narrativeParagraphs} />
-
-
+            <div className="about-narrative">
+              {narrativeParagraphs.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
 
             <section className="about-skills-section" aria-label="Skills">
               <h3 className="about-section-label">SKILLS</h3>

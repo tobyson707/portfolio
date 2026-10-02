@@ -27,6 +27,15 @@
   --control-text: var(--text-primary);
 }
 
+[data-theme="light"] {
+  --background: #FFFFFF;
+  --surface: #F9F7F4;
+  --surface-raised: #FFFFFF;
+  --border: rgba(13, 13, 15, 0.12);
+  --control-background: rgba(255, 255, 255, 0.92);
+  --control-text: var(--text-primary);
+}
+
 [data-theme="dark"] {
   --background: #0D0D0F;
   --surface: #141416;
@@ -3659,34 +3668,6 @@ canvas {
   font-size: clamp(14px, 1.1vw, 15.5px);
   line-height: 1.68;
   color: var(--text-secondary);
-}
-
-.about-typing-para {
-  position: relative;
-}
-
-.about-typing-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1.15em;
-  background: var(--accent, #F15723);
-  margin-left: 3px;
-  vertical-align: -0.15em;
-  animation: blink-cursor 0.75s infinite ease-in-out;
-  transition: opacity 0.4s ease;
-}
-
-.about-typing-cursor.is-fading {
-  opacity: 0;
-}
-
-@keyframes blink-cursor {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
 }
 
 /* Screen reader utility class */

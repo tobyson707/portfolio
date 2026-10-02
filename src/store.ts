@@ -28,10 +28,14 @@ interface StoreState {
 }
 
 const getInitialTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'light'
-  const saved = (localStorage.getItem('tobi-xp-theme') || localStorage.getItem('theme')) as 'light' | 'dark' | null
-  if (saved === 'dark' || saved === 'light') return saved
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  if (typeof window === 'undefined') return 'dark'
+  try {
+    const saved = (localStorage.getItem('tobi-xp-theme') || localStorage.getItem('theme')) as 'light' | 'dark' | null
+    if (saved === 'dark' || saved === 'light') return saved
+  } catch {
+    // ignore
+  }
+  return 'dark'
 }
 
 const applyThemeToDOM = (theme: 'light' | 'dark') => {
@@ -40,8 +44,12 @@ const applyThemeToDOM = (theme: 'light' | 'dark') => {
     document.documentElement.setAttribute('data-theme', theme)
   }
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('tobi-xp-theme', theme)
-    localStorage.setItem('theme', theme)
+    try {
+      localStorage.setItem('tobi-xp-theme', theme)
+      localStorage.setItem('theme', theme)
+    } catch {
+      // ignore
+    }
   }
 }
 

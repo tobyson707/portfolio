@@ -392,19 +392,29 @@ function PublicPortfolio() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [currentView, isAboutOpen])
 
-  // Theme persistence & system preference
+  // Theme persistence & initialization
   useEffect(() => {
-    const savedTheme = localStorage.getItem('tobi-xp-theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    try {
+      const savedTheme = (localStorage.getItem('tobi-xp-theme') || localStorage.getItem('theme')) as 'light' | 'dark' | null
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setTheme(savedTheme)
+      } else {
+        setTheme('dark')
+      }
+    } catch {
       setTheme('dark')
     }
   }, [setTheme])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('tobi-xp-theme', theme)
+    document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem('tobi-xp-theme', theme)
+      localStorage.setItem('theme', theme)
+    } catch {
+      // ignore
+    }
   }, [theme])
 
   return (
