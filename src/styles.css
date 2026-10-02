@@ -3719,6 +3719,146 @@ canvas {
   letter-spacing: 0.01em;
 }
 
+/* ==========================================================================
+   TOBI XP — 404 Not Found Page
+   ========================================================================== */
+.not-found-root {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--surface, #0D0D0F);
+  color: var(--text-primary, #ffffff);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 40px 24px;
+}
+
+.not-found-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 640px;
+  width: 100%;
+}
+
+.not-found-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.not-found-eyebrow {
+  font-family: var(--font-primary, 'Poppins', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: var(--accent, #F15723);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.not-found-title {
+  font-family: var(--font-primary, 'Poppins', sans-serif);
+  font-weight: 900;
+  font-size: clamp(7rem, 24vw, 16rem);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 24px 0;
+  user-select: none;
+}
+
+.not-found-orange {
+  color: var(--accent, #F15723);
+  text-shadow: 0 0 40px rgba(241, 87, 35, 0.35);
+}
+
+.not-found-heading {
+  font-family: var(--font-primary, 'Poppins', sans-serif);
+  font-weight: 700;
+  font-size: clamp(22px, 3.5vw, 32px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 12px;
+}
+
+.not-found-desc {
+  font-family: var(--font-primary, 'Poppins', sans-serif);
+  font-weight: 400;
+  font-size: clamp(14px, 1.5vw, 16.5px);
+  line-height: 1.6;
+  color: var(--text-secondary, #a8a29e);
+  margin-bottom: 36px;
+  max-width: 420px;
+}
+
+.not-found-action {
+  display: flex;
+  justify-content: center;
+}
+
+.not-found-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: var(--accent, #F15723);
+  color: #ffffff;
+  font-family: var(--font-primary, 'Poppins', sans-serif);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 25px rgba(241, 87, 35, 0.25);
+}
+
+.not-found-btn:hover {
+  transform: translateY(-2px);
+  background: #ff6534;
+  box-shadow: 0 14px 30px rgba(241, 87, 35, 0.35);
+}
+
+.not-found-btn:active {
+  transform: translateY(0);
+}
+
+.not-found-arrow {
+  font-size: 15px;
+  transition: transform 0.2s ease;
+}
+
+.not-found-btn:hover .not-found-arrow {
+  transform: translate(3px, -3px);
+}
+
+.not-found-badge {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-primary, 'Poppins', sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--text-subtle, #666);
+  text-transform: uppercase;
+  user-select: none;
+  pointer-events: none;
+}
+
 @media (max-width: 960px) {
   .about-layout {
     flex-direction: column;
@@ -3781,12 +3921,19 @@ canvas {
   user-select: none;
 }
 
-.hgt-tobi {
+/* Shared TOBI XP Brand Typography Rule — Source of Truth: Desktop Hero (Poppins 600) */
+.brand-tobi-xp,
+.hgt-tobi,
+.hgt-xp,
+.hero-mobile-title {
   font-family: var(--font-primary, 'Poppins', sans-serif);
   font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.hgt-tobi {
   font-size: clamp(4.2rem, 13vw, 15.5rem);
   line-height: 0.9;
-  letter-spacing: -0.04em;
   color: var(--text-primary);
 }
 
@@ -4242,10 +4389,10 @@ canvas {
 
   .hero-mobile-title {
     font-family: var(--font-primary, 'Poppins', sans-serif);
-    font-weight: 850;
+    font-weight: 600;
     font-size: clamp(2.6rem, 11.5vw, 3.6rem);
     line-height: 1;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.04em;
     color: #FFFFFF;
     margin: 0;
     text-align: center;

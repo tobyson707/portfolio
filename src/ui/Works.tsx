@@ -72,6 +72,11 @@ function SectionCard({
     section.no === '01' ||
     section.title?.toUpperCase().includes('ILLUSTRATION')
 
+  const isDesigns =
+    section.id === 'maker' ||
+    section.no === '02' ||
+    section.title?.toUpperCase().includes('DESIGN')
+
   const [coverError, setCoverError] = useState(false)
   const cover = isIllustrations
     ? '/images/works/Illustrations/Illustrations.webp'
@@ -132,7 +137,7 @@ function SectionCard({
             />
           ) : (
             <div className="wk-card-cover-ph" aria-hidden="true">
-              <span className="wk-card-cover-no">{section.no}</span>
+              {!isDesigns && <span className="wk-card-cover-no">{section.no}</span>}
             </div>
           )}
         </div>

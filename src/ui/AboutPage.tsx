@@ -259,7 +259,7 @@ export default function AboutPage() {
 
             <div className="about-narrative">
               {about.paragraphs && about.paragraphs.length > 0 ? (
-                about.paragraphs.map((p, idx) => (
+                about.paragraphs.map((p: string, idx: number) => (
                   <p key={idx}>{p}</p>
                 ))
               ) : (

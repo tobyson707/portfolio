@@ -123,10 +123,11 @@ export interface SiteContentData {
   about: {
     eyebrow: string
     heading: string
-    narrative: string
-    personalityNote: string
-    ctaLabel: string
+    narrative?: string
+    personalityNote?: string
+    ctaLabel?: string
     skills: string[]
+    paragraphs?: string[]
   }
   contact: {
     number: string
@@ -268,6 +269,9 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
   about: {
     eyebrow: 'ABOUT',
     heading: 'I MAKE THINGS\nPEOPLE CAN EXPERIENCE.',
+    narrative: 'I’m Tobi XP, an illustrator and designer who enjoys turning ideas into things people can see, use, and interact with ;)',
+    personalityNote: 'Still learning, still experimenting, and always making something.',
+    ctaLabel: 'EXPLORE WORKS',
     paragraphs: [
       'I’m Tobi XP, an illustrator and designer who enjoys turning ideas into things people can see, use, and interact with ;)',
       'From illustration and character design to product design and interactive experiences, I like exploring ideas, figuring things out, and seeing where they lead.',

@@ -11,6 +11,7 @@ import SoundControl from './ui/SoundControl'
 import SoundActivationPrompt from './ui/SoundActivationPrompt'
 import NavigationMenu from './ui/NavigationMenu'
 import AboutPage from './ui/AboutPage'
+import NotFoundPage from './ui/NotFoundPage'
 import ThemeToggle from './ui/ThemeToggle'
 import { useStore } from './store'
 import { SITE_CONTENT } from './data/siteContent'
@@ -268,11 +269,19 @@ function PublicPortfolio() {
   // Initialize analytics & track views
   useEffect(() => {
     initAnalytics()
+    const path = window.location.pathname
+    if (path && path !== '/' && path !== '/index.html') {
+      if (path === '/about' || path.includes('about')) {
+        useStore.getState().setCurrentView('about')
+      } else {
+        useStore.getState().setCurrentView('404')
+      }
+    }
   }, [])
 
   useEffect(() => {
-    const pageName = currentView === 'about' ? 'About' : 'Home'
-    const pagePath = currentView === 'about' ? '/about' : '/'
+    const pageName = currentView === 'about' ? 'About' : currentView === '404' ? '404 Not Found' : 'Home'
+    const pagePath = currentView === 'about' ? '/about' : currentView === '404' ? '/404' : '/'
     trackPageView(pageName, pagePath)
 
     const startTime = Date.now()
@@ -339,6 +348,16 @@ function PublicPortfolio() {
             transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
           >
             <AboutPage />
+          </motion.div>
+        ) : currentView === '404' ? (
+          <motion.div
+            key="404-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <NotFoundPage />
           </motion.div>
         ) : (
           <HomeView key="home-view" />

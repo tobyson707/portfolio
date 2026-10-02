@@ -5,14 +5,14 @@ interface StoreState {
   active: string | null
   hovered: string | null
   entered: boolean
-  currentView: 'home' | 'about'
+  currentView: 'home' | 'about' | '404'
   theme: 'light' | 'dark'
   heroModelReady: boolean
   isModalOpen: boolean
   setActive: (id: string | null) => void
   setHovered: (id: string | null) => void
   enter: () => void
-  setCurrentView: (view: 'home' | 'about') => void
+  setCurrentView: (view: 'home' | 'about' | '404') => void
   toggleTheme: () => void
   setTheme: (theme: 'light' | 'dark') => void
   setHeroModelReady: (ready: boolean) => void
