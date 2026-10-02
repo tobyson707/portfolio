@@ -12,6 +12,7 @@ interface StoreState {
   pendingScrollTarget: string | null
   isAboutOpen: boolean
   savedHomeScrollY: number
+  cameFromHome: boolean
   setActive: (id: string | null) => void
   setHovered: (id: string | null) => void
   enter: () => void
@@ -23,6 +24,7 @@ interface StoreState {
   setPendingScrollTarget: (target: string | null) => void
   setIsAboutOpen: (open: boolean) => void
   setSavedHomeScrollY: (y: number) => void
+  setCameFromHome: (came: boolean) => void
 }
 
 const getInitialTheme = (): 'light' | 'dark' => {
@@ -57,6 +59,7 @@ export const useStore = create<StoreState>((set) => ({
   pendingScrollTarget: null,
   isAboutOpen: false,
   savedHomeScrollY: 0,
+  cameFromHome: false,
   setActive: (id) => set({ active: id }),
   setHovered: (id) => set({ hovered: id }),
   enter: () => set({ entered: true }),
@@ -78,11 +81,12 @@ export const useStore = create<StoreState>((set) => ({
     set((state) => {
       if (state.isAboutOpen === open) return state
       if (open && typeof window !== 'undefined') {
-        return { isAboutOpen: true, savedHomeScrollY: window.scrollY }
+        return { isAboutOpen: true }
       }
       return { isAboutOpen: open }
     }),
   setSavedHomeScrollY: (y) => set({ savedHomeScrollY: y }),
+  setCameFromHome: (came) => set({ cameFromHome: came }),
 }))
 
 // 开发期调试钩子：可在 console 用 __store.getState().setActive('ads')

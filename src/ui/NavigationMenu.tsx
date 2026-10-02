@@ -37,6 +37,8 @@ export default function NavigationMenu() {
   const isModalOpen = useStore((s) => s.isModalOpen)
   const isAboutOpen = useStore((s) => s.isAboutOpen)
   const setIsAboutOpen = useStore((s) => s.setIsAboutOpen)
+  const setSavedHomeScrollY = useStore((s) => s.setSavedHomeScrollY)
+  const setCameFromHome = useStore((s) => s.setCameFromHome)
   const social = useContentStore((s) => s.site.social)
   const contact = useContentStore((s) => s.site.contact)
 
@@ -105,10 +107,27 @@ export default function NavigationMenu() {
         if (currentView === '404') {
           setCurrentView('home')
         }
+        const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0
+        setSavedHomeScrollY(currentScroll)
+        setCameFromHome(true)
+        if (typeof window !== 'undefined' && window.location.pathname !== '/about') {
+          try {
+            window.history.pushState({ fromHome: true }, '', '/about')
+          } catch {
+            // ignore
+          }
+        }
         setIsAboutOpen(true)
       } else if (item.id === 'home') {
         if (isAboutOpen) {
           setIsAboutOpen(false)
+        }
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          try {
+            window.history.pushState(null, '', '/')
+          } catch {
+            // ignore
+          }
         }
         setPendingScrollTarget('home')
         document.body.style.overflow = ''
@@ -121,22 +140,30 @@ export default function NavigationMenu() {
           setPendingScrollTarget(null)
         }, 120)
       } else if (item.id === 'works') {
+        const wasAboutOpen = isAboutOpen
         if (isAboutOpen) {
           setIsAboutOpen(false)
         }
-        setPendingScrollTarget('works')
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          try {
+            window.history.pushState(null, '', '/')
+          } catch {
+            // ignore
+          }
+        }
         document.body.style.overflow = ''
         document.documentElement.style.overflow = ''
         if (currentView !== 'home') {
           setCurrentView('home')
         }
-        scrollToWorks('smooth')
-        setTimeout(() => {
+        if (wasAboutOpen) {
+          setPendingScrollTarget('works')
+        } else {
           scrollToWorks('smooth')
-        }, 60)
+        }
       }
     },
-    [currentView, setCurrentView, setPendingScrollTarget, isAboutOpen, setIsAboutOpen]
+    [currentView, setCurrentView, setPendingScrollTarget, isAboutOpen, setIsAboutOpen, setSavedHomeScrollY, setCameFromHome]
   )
 
   const handleItemMouseMove = (
@@ -218,6 +245,11 @@ export default function NavigationMenu() {
   const activeItemId = hoveredItemId || focusedItemId || mobileTappedId
   const currentCardText = activeItemId ? HOVER_CARD_TEXTS[activeItemId] : null
   const showHoverCard = Boolean(isOpen && activeItemId && currentCardText)
+
+  // Completely unmount/exclude navigation menu and hamburger button from About page
+  if (isAboutOpen) {
+    return null
+  }
 
   return (
     <>

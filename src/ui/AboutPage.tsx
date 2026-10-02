@@ -128,6 +128,7 @@ interface AboutPageProps {
 export default function AboutPage({ onClose }: AboutPageProps) {
   const setIsAboutOpen = useStore((state) => state.setIsAboutOpen)
   const savedHomeScrollY = useStore((state) => state.savedHomeScrollY)
+  const cameFromHome = useStore((state) => state.cameFromHome)
   const theme = useStore((state) => state.theme)
   const about = useContentStore((state) => state.site.about)
   const social = useContentStore((state) => state.site.social)
@@ -139,7 +140,20 @@ export default function AboutPage({ onClose }: AboutPageProps) {
     } else {
       setIsAboutOpen(false)
     }
-  }, [onClose, setIsAboutOpen])
+
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      try {
+        window.history.pushState(null, '', '/')
+      } catch {
+        // ignore
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      const targetScroll = cameFromHome && savedHomeScrollY > 0 ? savedHomeScrollY : 0
+      window.scrollTo({ top: targetScroll, behavior: 'instant' })
+    }
+  }, [onClose, setIsAboutOpen, cameFromHome, savedHomeScrollY])
 
   // ESC key to dismiss overlay
   useEffect(() => {
@@ -159,7 +173,6 @@ export default function AboutPage({ onClose }: AboutPageProps) {
   useEffect(() => {
     const originalBodyOverflow = document.body.style.overflow
     const originalHtmlOverflow = document.documentElement.style.overflow
-    const scrollYBefore = typeof window !== 'undefined' ? window.scrollY : 0
 
     document.body.style.overflow = 'hidden'
     document.documentElement.style.overflow = 'hidden'
@@ -169,11 +182,13 @@ export default function AboutPage({ onClose }: AboutPageProps) {
       document.documentElement.style.overflow = originalHtmlOverflow
       const pendingScroll = useStore.getState().pendingScrollTarget
       if (!pendingScroll && typeof window !== 'undefined') {
-        const targetScroll = savedHomeScrollY || scrollYBefore
+        const came = useStore.getState().cameFromHome
+        const savedY = useStore.getState().savedHomeScrollY
+        const targetScroll = came && savedY > 0 ? savedY : 0
         window.scrollTo({ top: targetScroll, behavior: 'instant' })
       }
     }
-  }, [savedHomeScrollY])
+  }, [savedHomeScrollY, cameFromHome])
 
   const handleInteraction = useCallback(() => {
     if (!hasInteracted) {
@@ -237,25 +252,23 @@ export default function AboutPage({ onClose }: AboutPageProps) {
               type="button"
               className="about-close-btn"
               onClick={handleClose}
-              aria-label="Close About"
+              aria-label="Close About and return to homepage"
               title="Close [Esc]"
             >
-              <span className="about-close-btn-text">CLOSE</span>
-              <span className="about-close-btn-icon" aria-hidden="true">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </span>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           </div>
         </header>

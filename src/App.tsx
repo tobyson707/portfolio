@@ -172,30 +172,26 @@ function HomeView() {
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
   const { scrollY } = useScroll()
 
-  // Handle pending scroll target when HomeView mounts into DOM
+  // Handle pending scroll target when HomeView mounts into DOM or transitions from About
   useEffect(() => {
     if (pendingScrollTarget === 'works') {
       let cancelled = false
-      const timer = setTimeout(() => {
+      const rafId = requestAnimationFrame(() => {
         if (cancelled) return
-        const raf = requestAnimationFrame(() => {
-          if (cancelled) return
-          scrollToWorks('smooth')
-          setPendingScrollTarget(null)
+        scrollToWorks('smooth')
+        setPendingScrollTarget(null)
 
-          // Secondary alignment check after image layout settles
-          setTimeout(() => {
-            if (!cancelled) {
-              scrollToWorks('smooth')
-            }
-          }, 320)
-        })
-        return () => cancelAnimationFrame(raf)
-      }, 60)
+        // Secondary check once layout completes
+        setTimeout(() => {
+          if (!cancelled) {
+            scrollToWorks('smooth')
+          }
+        }, 180)
+      })
 
       return () => {
         cancelled = true
-        clearTimeout(timer)
+        cancelAnimationFrame(rafId)
       }
     }
   }, [pendingScrollTarget, setPendingScrollTarget])
@@ -304,19 +300,37 @@ function PublicPortfolio() {
   useEffect(() => {
     initAnalytics()
     const path = window.location.pathname
-    if (path && path !== '/' && path !== '/index.html') {
-      if (path === '/about' || path.includes('about')) {
-        // Gracefully normalize URL to root without reload, open overlay
-        try {
-          window.history.replaceState(null, '', '/')
-        } catch {
-          // ignore
-        }
+    if (path === '/about' || path === '/about/') {
+      // Direct access or reload on /about: keep /about in URL and open About without hamburger menu
+      useStore.getState().setCameFromHome(false)
+      useStore.getState().setSavedHomeScrollY(0)
+      setIsAboutOpen(true)
+    } else if (path && path !== '/' && path !== '/index.html') {
+      useStore.getState().setCurrentView('404')
+    }
+  }, [setIsAboutOpen])
+
+  // Support browser Back and Forward navigation smoothly
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const path = window.location.pathname
+      if (path === '/about' || path === '/about/') {
         setIsAboutOpen(true)
-      } else {
-        useStore.getState().setCurrentView('404')
+      } else if (path === '/' || path === '/index.html') {
+        setIsAboutOpen(false)
+        const state = e.state as { fromHome?: boolean } | null
+        const came = useStore.getState().cameFromHome || Boolean(state?.fromHome)
+        const savedY = useStore.getState().savedHomeScrollY
+        if (came && savedY > 0) {
+          window.scrollTo({ top: savedY, behavior: 'instant' })
+        } else {
+          window.scrollTo({ top: 0, behavior: 'instant' })
+        }
       }
     }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
   }, [setIsAboutOpen])
 
   useEffect(() => {
@@ -326,7 +340,8 @@ function PublicPortfolio() {
     }
 
     const pageName = isAboutOpen ? 'About' : 'Home'
-    trackPageView(pageName, '/')
+    const pagePath = isAboutOpen ? '/about' : '/'
+    trackPageView(pageName, pagePath)
 
     const startTime = Date.now()
     return () => {
@@ -388,15 +403,34 @@ function PublicPortfolio() {
         <HomeView key="home-view" />
       )}
 
-      {/* 全屏电影感 About 遮罩层 (Full-Screen About Overlay) */}
+      {/* 全屏电影感 About 页面 / 遮罩层 (Full-Screen About Page) */}
       <AnimatePresence>
         {isAboutOpen && (
-          <AboutPage key="about-overlay" onClose={() => setIsAboutOpen(false)} />
+          <AboutPage
+            key="about-overlay"
+            onClose={() => {
+              setIsAboutOpen(false)
+              if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+                try {
+                  window.history.pushState(null, '', '/')
+                } catch {
+                  // ignore
+                }
+              }
+              const came = useStore.getState().cameFromHome
+              const savedY = useStore.getState().savedHomeScrollY
+              if (came && savedY > 0) {
+                window.scrollTo({ top: savedY, behavior: 'instant' })
+              } else {
+                window.scrollTo({ top: 0, behavior: 'instant' })
+              }
+            }}
+          />
         )}
       </AnimatePresence>
 
-      {/* 顶部右侧常驻电影感导航菜单 (Navigation Menu) */}
-      <NavigationMenu />
+      {/* 顶部右侧常驻电影感导航菜单 (Navigation Menu) — ONLY rendered on homepage, completely excluded/unmounted on /about */}
+      {currentView === 'home' && !isAboutOpen && <NavigationMenu />}
 
       {/* 底部右侧常驻声音控制 (Sound Control) */}
       <div className="global-controls">
