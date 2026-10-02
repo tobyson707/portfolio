@@ -47,9 +47,7 @@ export async function executeRadialThemeToggle(
 
   // If no element passed, try finding the active theme button in DOM
   if (!element && typeof document !== 'undefined') {
-    element =
-      document.querySelector<HTMLElement>('.theme-toggle-btn') ||
-      document.querySelector<HTMLElement>('.admin-topbar-btn[aria-label="Toggle color theme"]')
+    element = document.querySelector<HTMLElement>('.theme-toggle-btn')
   }
 
   if (element && typeof element.getBoundingClientRect === 'function') {

@@ -68,7 +68,7 @@ function AboutFallbackModel() {
 function ExhibitionModelContent() {
   const { scene } = useGLTF(
     `${import.meta.env.BASE_URL}models/mask.glb`,
-    `${import.meta.env.BASE_URL}draco/gltf/`
+    'https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
   )
   const groupRef = useRef<THREE.Group>(null)
 
@@ -258,14 +258,17 @@ export default function AboutPage() {
             </h1>
 
             <div className="about-narrative">
-              <p>{about.narrative}</p>
+              {about.paragraphs && about.paragraphs.length > 0 ? (
+                about.paragraphs.map((p, idx) => (
+                  <p key={idx}>{p}</p>
+                ))
+              ) : (
+                <>
+                  <p>{about.narrative}</p>
+                  {about.personalityNote && <p>{about.personalityNote}</p>}
+                </>
+              )}
             </div>
-
-            {about.personalityNote && (
-              <div className="about-personality-note">
-                <p>{about.personalityNote}</p>
-              </div>
-            )}
 
 
 
@@ -325,4 +328,16 @@ export default function AboutPage() {
       </div>
     </div>
   )
+}
+
+// Preload 3D mask model into memory cache
+if (typeof window !== 'undefined') {
+  try {
+    useGLTF.preload(
+      `${import.meta.env.BASE_URL}models/mask.glb`,
+      `${import.meta.env.BASE_URL}draco/gltf/`
+    )
+  } catch {
+    // ignore preload errors
+  }
 }

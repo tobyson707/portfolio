@@ -8,6 +8,7 @@ interface StoreState {
   currentView: 'home' | 'about'
   theme: 'light' | 'dark'
   heroModelReady: boolean
+  isModalOpen: boolean
   setActive: (id: string | null) => void
   setHovered: (id: string | null) => void
   enter: () => void
@@ -15,6 +16,7 @@ interface StoreState {
   toggleTheme: () => void
   setTheme: (theme: 'light' | 'dark') => void
   setHeroModelReady: (ready: boolean) => void
+  setIsModalOpen: (open: boolean) => void
 }
 
 const getInitialTheme = (): 'light' | 'dark' => {
@@ -45,6 +47,7 @@ export const useStore = create<StoreState>((set) => ({
   currentView: 'home',
   theme: initialTheme,
   heroModelReady: false,
+  isModalOpen: false,
   setActive: (id) => set({ active: id }),
   setHovered: (id) => set({ hovered: id }),
   enter: () => set({ entered: true }),
@@ -60,6 +63,7 @@ export const useStore = create<StoreState>((set) => ({
     set({ theme })
   },
   setHeroModelReady: (ready) => set({ heroModelReady: ready }),
+  setIsModalOpen: (open) => set({ isModalOpen: open }),
 }))
 
 // 开发期调试钩子：可在 console 用 __store.getState().setActive('ads')

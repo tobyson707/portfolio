@@ -248,6 +248,99 @@ export function deriveTitleFromFilename(filename: string): string {
  */
 export const illustrationGallery: IllustrationGallery = ${JSON.stringify(data, null, 2)}
 
+const STORAGE_KEY = 'tobi_xp_illustrations_order_v1'
+
+/**
+ * Fisher-Yates array shuffle.
+ */
+function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = result[i]
+    result[i] = result[j]
+    result[j] = temp
+  }
+  return result
+}
+
+/**
+ * Retrieves or initializes a persistent shuffled order for a specific category.
+ * Stored in localStorage so it is shuffled once on first visit and stays fixed across sessions.
+ */
+function getPersistentlyOrderedList(
+  categoryKey: 'paintings' | 'sketches' | 'studies',
+  sourceList: IllustrationImage[]
+): IllustrationImage[] {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return sourceList
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    let state: Record<string, string[]> = {}
+    if (raw) {
+      try {
+        state = JSON.parse(raw)
+      } catch {
+        state = {}
+      }
+    }
+
+    const savedIds = state[categoryKey]
+    const currentIdMap = new Map(sourceList.map((img) => [img.id, img]))
+
+    // If we have a saved list of IDs for this category and it contains items
+    if (Array.isArray(savedIds) && savedIds.length > 0) {
+      const ordered: IllustrationImage[] = []
+      const seenIds = new Set<string>()
+
+      for (const id of savedIds) {
+        const item = currentIdMap.get(id)
+        if (item) {
+          ordered.push(item)
+          seenIds.add(id)
+        }
+      }
+
+      // Append any newly added images that weren't in the saved order
+      for (const item of sourceList) {
+        if (!seenIds.has(item.id)) {
+          ordered.push(item)
+        }
+      }
+
+      if (ordered.length > 0) {
+        return ordered
+      }
+    }
+
+    // First time initialization: shuffle once and persist
+    const shuffled = shuffleArray(sourceList)
+    state[categoryKey] = shuffled.map((img) => img.id)
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    return shuffled
+  } catch (err) {
+    console.warn('[Gallery] Failed to read/write persistent order from localStorage:', err)
+    return sourceList
+  }
+}
+
+// In-memory cache of the persistently shuffled categories for fast synchronous access
+let cachedShuffledGallery: IllustrationGallery | null = null
+
+export function getShuffledGallery(): IllustrationGallery {
+  if (cachedShuffledGallery) return cachedShuffledGallery
+
+  cachedShuffledGallery = {
+    paintings: getPersistentlyOrderedList('paintings', illustrationGallery.paintings),
+    sketches: getPersistentlyOrderedList('sketches', illustrationGallery.sketches),
+    studies: getPersistentlyOrderedList('studies', illustrationGallery.studies),
+  }
+
+  return cachedShuffledGallery
+}
+
 /**
  * Complete list of all illustration images across all 3 categories (Paintings, Sketches, Studies).
  */
@@ -258,15 +351,27 @@ export const allIllustrationImages: IllustrationImage[] = [
 ]
 
 /**
- * Helper to retrieve gallery images for a category name or slug.
+ * Helper to retrieve gallery images for a category name or slug with persistent fixed shuffle order.
  */
 export function getCategoryImages(categoryOrSlug: string): IllustrationImage[] {
+  const gallery = getShuffledGallery()
   const norm = categoryOrSlug.toLowerCase().trim()
-  if (norm === 'paintings' || norm === 'painting') return illustrationGallery.paintings
-  if (norm === 'sketches' || norm === 'sketch') return illustrationGallery.sketches
-  if (norm === 'studies' || norm === 'study') return illustrationGallery.studies
-  if (norm === 'all' || norm === 'all works' || norm === 'all illustrations' || norm === 'all-works' || norm === 'illustrations' || norm === 'illustration') {
-    return allIllustrationImages
+  if (norm === 'paintings' || norm === 'painting') return gallery.paintings
+  if (norm === 'sketches' || norm === 'sketch') return gallery.sketches
+  if (norm === 'studies' || norm === 'study') return gallery.studies
+  if (
+    norm === 'all' ||
+    norm === 'all works' ||
+    norm === 'all illustrations' ||
+    norm === 'all-works' ||
+    norm === 'illustrations' ||
+    norm === 'illustration'
+  ) {
+    return [
+      ...gallery.paintings,
+      ...gallery.sketches,
+      ...gallery.studies,
+    ]
   }
   return []
 }

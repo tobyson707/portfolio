@@ -11,24 +11,41 @@ import {
 import ImageViewer from './ImageViewer'
 import Contact from './Contact'
 import { SITE_CONTENT } from '../data/siteContent'
-import { scrollToContact } from '../utils/scroll'
+import { scrollToContact, scrollToWorks } from '../utils/scroll'
 import { useContentStore } from '../services/contentStore'
 import { trackWorkView } from '../services/analytics'
 
 const EASE = [0.22, 1, 0.36, 1]
 
 // 极简清单的一行：作品名靠左、数据(播放量/标签)靠右、发丝线分隔；整行可点开全屏详情
-function WorkLine({ item, onOpen }: { item: WorkListItem; onOpen: (item: WorkListItem) => void }) {
-  const hasMeta = item.meta || (item.tags && item.tags.length)
+function WorkLine({
+  item,
+  isIllustration,
+  onOpen,
+}: {
+  item: WorkListItem
+  isIllustration?: boolean
+  onOpen: (item: WorkListItem) => void
+}) {
+  const isIllustrationItem =
+    isIllustration ||
+    item.categoryId === 'ad' ||
+    ['paintings', 'sketches', 'studies', 'illustrations', 'all illustrations'].includes(
+      (item.slug || item.name || '').toLowerCase().trim()
+    )
+
+  const tags = isIllustrationItem ? [] : item.tags
+  const meta = isIllustrationItem ? undefined : item.meta
+  const hasMeta = Boolean(meta || (tags && tags.length > 0))
   return (
     <li className="wk-line">
       <button className="wk-line-btn" onClick={() => onOpen(item)}>
         <span className="wk-line-name">{item.name}</span>
         {hasMeta && (
           <span className="wk-line-meta">
-            {item.meta && <span className="wk-line-num">{item.meta}</span>}
-            {item.tags &&
-              item.tags.map((t, i) => (
+            {meta && <span className="wk-line-num">{meta}</span>}
+            {tags &&
+              tags.map((t, i) => (
                 <span key={i} className="wk-line-tag">
                   {t}
                 </span>
@@ -136,7 +153,11 @@ function SectionWorks({
   onOpen: (item: WorkListItem) => void
 }) {
   const isComingSoon = section.isComingSoon || (!section.items?.length && !section.groups?.length)
-  const isDesigns = section.id === 'maker' || section.title.toUpperCase().includes('DESIGN')
+  const isDesigns = section.id === 'maker' || (section.title ? section.title.toUpperCase().includes('DESIGN') : false)
+  const isIllustrations =
+    section.id === 'ad' ||
+    section.no === '01' ||
+    (section.title ? section.title.toUpperCase().includes('ILLUSTRATION') : false)
 
   if (isComingSoon || (isDesigns && (!section.items || section.items.length === 0))) {
     const rawMsg = section.comingSoonMessage || 'PATIENCE!\nSTILL WORKING ON THIS SECTION...'
@@ -156,7 +177,12 @@ function SectionWorks({
       {section.items && (
         <ul className="wk-list">
           {section.items.map((it, i) => (
-            <WorkLine key={it.id || it.slug || i} item={it} onOpen={onOpen} />
+            <WorkLine
+              key={it.id || it.slug || i}
+              item={it}
+              isIllustration={isIllustrations}
+              onOpen={onOpen}
+            />
           ))}
         </ul>
       )}
@@ -167,7 +193,12 @@ function SectionWorks({
             <div className="wk-sub-head">{g.heading}</div>
             <ul className="wk-list">
               {g.items.map((it, i) => (
-                <WorkLine key={i} item={{ name: it }} onOpen={onOpen} />
+                <WorkLine
+                  key={i}
+                  item={{ name: it }}
+                  isIllustration={isIllustrations}
+                  onOpen={onOpen}
+                />
               ))}
             </ul>
           </div>
@@ -194,6 +225,12 @@ function SectionWorks({
       )}
     </div>
   )
+}
+
+const SUBCATEGORY_CLOSING_NOTES: Record<string, string> = {
+  paintings: 'That’s all the paint for now. Or is it?',
+  sketches: 'A few rough ideas made it out of my head.',
+  studies: 'Still figuring things out. That’s the fun part.',
 }
 
 function WorkDetail({
@@ -252,6 +289,7 @@ function WorkDetail({
       : fallbackImages
 
   const isViewerOpen = selectedImageIndex !== null
+  const closingNote = isIllustrationSection ? SUBCATEGORY_CLOSING_NOTES[activeCategory] || null : null
 
   return (
     <>
@@ -286,11 +324,9 @@ function WorkDetail({
                   : activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)
                 : item.name}
             </h3>
-            <div className="wk-detail-sub">
-              {isIllustrationSection
-                ? `${images.length} work${images.length === 1 ? '' : 's'}`
-                : item.meta}
-            </div>
+            {!isIllustrationSection && item.meta && (
+              <div className="wk-detail-sub">{item.meta}</div>
+            )}
 
             {isIllustrationSection && (
               <div className="wk-detail-filter-bar" role="tablist" aria-label="Illustration Categories">
@@ -309,7 +345,6 @@ function WorkDetail({
                       }}
                     >
                       <span className="wk-filter-name">{tab.label}</span>
-                      <span className="wk-filter-count">{tab.count}</span>
                     </button>
                   )
                 })}
@@ -325,7 +360,7 @@ function WorkDetail({
                   className="wk-masonry-tile"
                   key={image.id || image.src}
                   type="button"
-                  aria-label={image.title ? `View ${image.title}` : 'View artwork'}
+                  aria-label="View artwork"
                   onClick={() => setSelectedImageIndex(idx)}
                   onContextMenu={(event) => event.preventDefault()}
                 >
@@ -338,7 +373,7 @@ function WorkDetail({
                   >
                     <img
                       src={encodeURI(image.src)}
-                      alt={image.title || 'Artwork thumbnail'}
+                      alt=""
                       className="wk-masonry-img"
                       draggable={false}
                       loading="lazy"
@@ -353,6 +388,12 @@ function WorkDetail({
           ) : (
             <div className="wk-masonry-empty">
               <p className="wk-masonry-empty-text">No works currently published in this category.</p>
+            </div>
+          )}
+
+          {closingNote && (
+            <div className="wk-category-closing">
+              <p className="wk-category-closing-text">{closingNote}</p>
             </div>
           )}
         </article>
@@ -423,15 +464,17 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
     }
   }, [count, lang])
 
-  // Listen for hash navigation e.g. #contact
+  // Listen for hash navigation e.g. #contact or #works
   useEffect(() => {
     const handleHash = () => {
       if (window.location.hash === '#contact') {
         scrollToContact()
+      } else if (window.location.hash === '#works') {
+        scrollToWorks()
       }
     }
     window.addEventListener('hashchange', handleHash)
-    if (window.location.hash === '#contact') {
+    if (window.location.hash === '#contact' || window.location.hash === '#works') {
       setTimeout(handleHash, 400)
     }
     return () => window.removeEventListener('hashchange', handleHash)

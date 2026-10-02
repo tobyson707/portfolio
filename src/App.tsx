@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useEffect, useState } from 'react'
+import React, { Suspense, useRef, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from 'framer-motion'
 import * as THREE from 'three'
@@ -8,12 +8,13 @@ import EditorialStats from './ui/EditorialStats'
 import Works from './ui/Works'
 import LoadingScreen from './ui/LoadingScreen'
 import SoundControl from './ui/SoundControl'
+import SoundActivationPrompt from './ui/SoundActivationPrompt'
 import NavigationMenu from './ui/NavigationMenu'
 import AboutPage from './ui/AboutPage'
 import ThemeToggle from './ui/ThemeToggle'
 import { useStore } from './store'
 import { SITE_CONTENT } from './data/siteContent'
-import AdminApp from './admin/AdminApp'
+import { scrollToWorks } from './utils/scroll'
 import { useContentStore } from './services/contentStore'
 import {
   initAnalytics,
@@ -61,12 +62,22 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
   const heroContent = useContentStore((s) => s.site.hero)
   return (
     <section className="hero" id="home">
-      {/* 巨大层叠艺术字体：TOBI + 身份标签，XP + I MAKE STUFF... (Hero Foreground Layer) */}
-      <div className="hero-giant-typography" aria-hidden="true">
+      {/* 巨大层叠艺术字体：TOBI + 身份标签，XP + I MAKE STUFF... (Hero Foreground Layer - Desktop & Tablet) */}
+      <div className="hero-giant-typography hero-desktop-only" aria-hidden="true">
         <div className="hgt-tobi-wrap">
           <span className="hgt-tobi">TOBI</span>
           <span className="hgt-role-under">
-            ILLUSTRATOR <span className="hgt-amp">&</span> DESIGNER
+            {heroContent.role?.includes('&') ? (
+              <>
+                {heroContent.role.split('&')[0].trim()} <span className="hgt-amp">&amp;</span> {heroContent.role.split('&')[1].trim()}
+              </>
+            ) : (
+              heroContent.role || (
+                <>
+                  ILLUSTRATOR <span className="hgt-amp">&amp;</span> DESIGNER
+                </>
+              )
+            )}
           </span>
         </div>
         <div className="hgt-xp-wrap">
@@ -79,14 +90,14 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
         </div>
       </div>
 
-      {/* 顶部中心微标语 */}
-      <div className="hero-micro top-center">
+      {/* 顶部中心微标语 (Desktop & Tablet) */}
+      <div className="hero-micro top-center hero-desktop-only">
         <span>{heroContent.microCopyTop || 'FIGURING IT OUT AS I GO.'}</span>
         <span className="micro-dot-orange" />
       </div>
 
-      {/* 左侧微标语 */}
-      <div className="hero-micro left-side">
+      {/* 左侧微标语 (Desktop & Tablet) */}
+      <div className="hero-micro left-side hero-desktop-only">
         <div className="crosshair-marker">+</div>
         <p className="hero-bio-lines" style={{ whiteSpace: 'pre-line' }}>
           {heroContent.microCopyLeft || 'I DRAW.\nI DESIGN.\nI BUILD THINGS.'}
@@ -94,25 +105,20 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
         <span className="micro-line" />
       </div>
 
-      {/* 角色旁微标语 */}
-      <div className="hero-micro near-character">
+      {/* 角色旁微标语 (Desktop & Tablet) */}
+      <div className="hero-micro near-character hero-desktop-only">
         <div className="crosshair-marker">+</div>
         <p className="hero-interact-hint" style={{ whiteSpace: 'pre-line' }}>
           {heroContent.microCopyHint || 'GO AHEAD.\nMOVE IT.'}
         </p>
       </div>
 
-      {/* 底部居中精致滚动指示器 */}
+      {/* 底部居中精致滚动指示器 (Desktop & Tablet) */}
       <motion.div
-        className="scroll-cue"
+        className="scroll-cue hero-desktop-only"
         style={{ opacity: cueOpacity }}
         onClick={() => {
-          const worksEl = document.getElementById('works') || document.querySelector('#works')
-          if (worksEl) {
-            worksEl.scrollIntoView({ behavior: 'smooth' })
-          } else {
-            window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })
-          }
+          scrollToWorks()
         }}
         role="button"
         tabIndex={0}
@@ -124,6 +130,35 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
         </svg>
         <span className="scroll-cue-label">SCROLL</span>
       </motion.div>
+
+      {/* 移动端专属极简居中底部布局 (Mobile Hero Only) */}
+      <div className="hero-mobile-gradient" aria-hidden="true" />
+      <div className="hero-mobile-layout">
+        <div className="hero-mobile-branding">
+          <h1 className="hero-mobile-title">
+            TOBI <span className="hero-mobile-orange">XP</span>
+          </h1>
+          <p className="hero-mobile-subtitle">
+            ILLUSTRATOR <span className="hero-mobile-orange">&amp;</span> DESIGNER
+          </p>
+        </div>
+        <motion.div
+          className="hero-mobile-scroll-cue"
+          style={{ opacity: cueOpacity }}
+          onClick={() => {
+            scrollToWorks()
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Scroll to content"
+        >
+          <svg className="scroll-mouse-icon" viewBox="0 0 24 36" width="20" height="28" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="30" rx="9" strokeWidth="2" />
+            <circle className="scroll-mouse-wheel" cx="12" cy="10" r="2.5" fill="currentColor" stroke="none" />
+          </svg>
+          <span className="scroll-cue-label">SCROLL</span>
+        </motion.div>
+      </div>
     </section>
   )
 }
@@ -144,11 +179,11 @@ function HomeView() {
     worksProgress,
     [0, 1],
     isDark
-      ? ['rgba(13, 13, 15, 0)', 'rgba(13, 13, 15, 0.5)']
-      : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.18)']
+      ? ['rgba(13, 13, 15, 0)', 'rgba(13, 13, 15, 0.8)']
+      : ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.88)']
   )
-  // 滚动后轻柔提亮背景，保证履历文字可读
-  const scrimOpacity = useTransform(scrollY, [0, 520], [0, 0.4])
+  // 滚动后柔和提亮/压暗背景，保证履历与统计文字在任何背景下皆清晰易读
+  const scrimOpacity = useTransform(scrollY, [0, 520], [0, isDark ? 0.65 : 0.75])
   // 首屏滚动提示随之淡出
   const cueOpacity = useTransform(scrollY, [0, 160], [1, 0])
   // 磨砂右轨：进入履历区后淡入（首屏不磨砂）
@@ -318,36 +353,13 @@ function PublicPortfolio() {
         <ThemeToggle />
         <SoundControl />
       </div>
+
+      {/* 首屏鼠标跟随/触屏声音激活提示卡片 */}
+      <SoundActivationPrompt />
     </>
   )
 }
 
 export default function App() {
-  const [isAdminRoute, setIsAdminRoute] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const path = window.location.pathname
-    const hash = window.location.hash
-    return path.startsWith('/admin') || hash.startsWith('#/admin') || hash === '#admin'
-  })
-
-  useEffect(() => {
-    const checkRoute = () => {
-      const path = window.location.pathname
-      const hash = window.location.hash
-      setIsAdminRoute(path.startsWith('/admin') || hash.startsWith('#/admin') || hash === '#admin')
-    }
-
-    window.addEventListener('popstate', checkRoute)
-    window.addEventListener('hashchange', checkRoute)
-    return () => {
-      window.removeEventListener('popstate', checkRoute)
-      window.removeEventListener('hashchange', checkRoute)
-    }
-  }, [])
-
-  if (isAdminRoute) {
-    return <AdminApp />
-  }
-
   return <PublicPortfolio />
 }

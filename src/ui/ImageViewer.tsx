@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { reportMissingImage, type IllustrationImage } from '../data/worksManifest'
+import { useStore } from '../store'
 
 export interface ImageViewerProps {
   images: IllustrationImage[]
@@ -32,6 +33,16 @@ export default function ImageViewer({
     if (total <= 1) return
     onNavigate((currentIndex + 1) % total)
   }, [total, currentIndex, onNavigate])
+
+  const setIsModalOpen = useStore((s) => s.setIsModalOpen)
+
+  // Sync global modal open state to prevent menu overlap
+  useEffect(() => {
+    setIsModalOpen(isOpen)
+    return () => {
+      setIsModalOpen(false)
+    }
+  }, [isOpen, setIsModalOpen])
 
   // Prevent background scrolling while viewer is open
   useEffect(() => {
@@ -191,7 +202,7 @@ export default function ImageViewer({
             </motion.button>
           )}
 
-          {/* Centered Image Presentation & Understated Title */}
+          {/* Centered Image Presentation */}
           <div
             className="wk-viewer-container"
             onClick={(e) => e.stopPropagation()}
@@ -220,10 +231,6 @@ export default function ImageViewer({
                 />
               </motion.div>
             </AnimatePresence>
-
-            <div className="wk-viewer-caption">
-              <span className="wk-viewer-title">{currentImage.title}</span>
-            </div>
           </div>
 
           {/* Navigation Arrow: Next */}

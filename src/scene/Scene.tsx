@@ -136,7 +136,7 @@ function GradientBackground() {
   )
 }
 
-// 所有光源（HDRI 环境 + 半球 + 补光方向光）
+// 3D Scene Lighting: HDRI Environment + Hemisphere + Key Directional Light
 function Lights() {
   const c = {
     envIntensity: 0.85,
@@ -210,7 +210,7 @@ function Man2({
   const setHeroModelReady = useStore((s) => s.setHeroModelReady)
   const { scene, animations } = useGLTF(
     `${import.meta.env.BASE_URL}models/tbxp.glb`,
-    `${import.meta.env.BASE_URL}draco/gltf/`
+    'https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
   )
 
   useEffect(() => {
@@ -235,8 +235,8 @@ function Man2({
     let glbCam: any = null
     let focusNode: any = null
     clone.traverse((o: any) => {
-      // Ensure any embedded key light in the loaded model is removed
-      if (o.isLight && (/key/i.test(o.name) || /main/i.test(o.name))) {
+      // Ensure any embedded light in the loaded model is removed
+      if (o.isLight) {
         o.parent?.remove(o)
       }
       if (o.isMesh) {
@@ -674,4 +674,16 @@ export default function Scene() {
       <Post2 focusRef={focusRef} frameRef={frameRef} dofBokehRef={dofBokehRef} dofRangeRef={dofRangeRef} />
     </>
   )
+}
+
+// Preload 3D hero model into memory cache to prevent duplicate fetches
+if (typeof window !== 'undefined') {
+  try {
+    useGLTF.preload(
+      `${import.meta.env.BASE_URL}models/tbxp.glb`,
+      'https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
+    )
+  } catch {
+    // ignore preload errors
+  }
 }
