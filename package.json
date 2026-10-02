@@ -15,6 +15,7 @@
     "@react-three/drei": "^9.114.0",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",
+    "@vercel/analytics": "^2.0.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^1.48.0",
     "react": "^18.3.1",
