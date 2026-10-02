@@ -23,6 +23,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const { progress, active, errors, loaded, total } = useProgress();
   const enter = useStore((s) => s.enter);
   const heroModelReady = useStore((s) => s.heroModelReady);
+  const theme = useStore((s) => s.theme);
 
   const [loadingState, setLoadingState] = useState<LoadingState>('LOADING');
   const [isRemoved, setIsRemoved] = useState(false);
@@ -111,6 +112,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   return (
     <motion.div
       className="loading-screen"
+      data-theme={theme}
       initial={{ y: 0 }}
       animate={{
         y: loadingState === 'EXITING' ? '-100%' : '0%',

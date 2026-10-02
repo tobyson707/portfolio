@@ -4727,13 +4727,13 @@ canvas {
 }
 
 
-/* ---------- TOBI XP — Editorial Curtain Loading Screen ---------- */
+/* ---------- TOBI XP — Theme-Adaptive Editorial Curtain Loading Screen ---------- */
 .loading-screen {
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: #050505;
-  color: #F8F5F2;
+  background: var(--background, #0D0D0F);
+  color: var(--text-primary, #F8F5F2);
   padding: clamp(28px, 4.5vw, 64px) clamp(24px, 5vw, 72px);
   display: flex;
   flex-direction: column;
@@ -4741,6 +4741,75 @@ canvas {
   user-select: none;
   overflow: hidden;
   box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light Theme Overrides */
+.loading-screen[data-theme="light"],
+[data-theme="light"] .loading-screen {
+  background: var(--surface, #F9F7F4);
+  color: #0D0D0F;
+}
+
+.loading-screen[data-theme="light"] .loading-screen__name,
+[data-theme="light"] .loading-screen__name,
+.loading-screen[data-theme="light"] .loading-screen__percentage,
+[data-theme="light"] .loading-screen__percentage {
+  color: #0D0D0F;
+}
+
+.loading-screen[data-theme="light"] .loading-screen__descriptor,
+[data-theme="light"] .loading-screen__descriptor {
+  color: rgba(13, 13, 15, 0.65);
+}
+
+.loading-screen[data-theme="light"] .loading-screen__message,
+[data-theme="light"] .loading-screen__message {
+  color: rgba(13, 13, 15, 0.62);
+}
+
+.loading-screen[data-theme="light"] .loading-screen__progress-track,
+[data-theme="light"] .loading-screen__progress-track {
+  background: rgba(13, 13, 15, 0.12);
+}
+
+.loading-screen[data-theme="light"] .loading-screen__ticks span,
+[data-theme="light"] .loading-screen__ticks span {
+  background: rgba(13, 13, 15, 0.18);
+}
+
+/* Dark Theme Overrides */
+.loading-screen[data-theme="dark"],
+[data-theme="dark"] .loading-screen {
+  background: #0D0D0F;
+  color: #F8F5F2;
+}
+
+.loading-screen[data-theme="dark"] .loading-screen__name,
+[data-theme="dark"] .loading-screen__name,
+.loading-screen[data-theme="dark"] .loading-screen__percentage,
+[data-theme="dark"] .loading-screen__percentage {
+  color: #F8F5F2;
+}
+
+.loading-screen[data-theme="dark"] .loading-screen__descriptor,
+[data-theme="dark"] .loading-screen__descriptor {
+  color: rgba(248, 245, 242, 0.6);
+}
+
+.loading-screen[data-theme="dark"] .loading-screen__message,
+[data-theme="dark"] .loading-screen__message {
+  color: rgba(248, 245, 242, 0.62);
+}
+
+.loading-screen[data-theme="dark"] .loading-screen__progress-track,
+[data-theme="dark"] .loading-screen__progress-track {
+  background: rgba(248, 245, 242, 0.15);
+}
+
+.loading-screen[data-theme="dark"] .loading-screen__ticks span,
+[data-theme="dark"] .loading-screen__ticks span {
+  background: rgba(248, 245, 242, 0.22);
 }
 
 .loading-screen__top {
