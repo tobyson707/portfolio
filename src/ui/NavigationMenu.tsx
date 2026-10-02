@@ -33,6 +33,7 @@ export default function NavigationMenu() {
   const [isOpen, setIsOpen] = useState(false)
   const currentView = useStore((s) => s.currentView)
   const setCurrentView = useStore((s) => s.setCurrentView)
+  const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
   const isModalOpen = useStore((s) => s.isModalOpen)
   const social = useContentStore((s) => s.site.social)
   const contact = useContentStore((s) => s.site.contact)
@@ -112,17 +113,14 @@ export default function NavigationMenu() {
         }
       } else if (item.id === 'works') {
         if (currentView !== 'home') {
-          window.scrollTo({ top: 0, behavior: 'instant' })
+          setPendingScrollTarget('works')
           setCurrentView('home')
-          setTimeout(() => {
-            scrollToWorks()
-          }, 120)
         } else {
           scrollToWorks()
         }
       }
     },
-    [currentView, setCurrentView]
+    [currentView, setCurrentView, setPendingScrollTarget]
   )
 
   const handleItemMouseMove = (

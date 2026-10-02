@@ -9,6 +9,7 @@ interface StoreState {
   theme: 'light' | 'dark'
   heroModelReady: boolean
   isModalOpen: boolean
+  pendingScrollTarget: string | null
   setActive: (id: string | null) => void
   setHovered: (id: string | null) => void
   enter: () => void
@@ -17,6 +18,7 @@ interface StoreState {
   setTheme: (theme: 'light' | 'dark') => void
   setHeroModelReady: (ready: boolean) => void
   setIsModalOpen: (open: boolean) => void
+  setPendingScrollTarget: (target: string | null) => void
 }
 
 const getInitialTheme = (): 'light' | 'dark' => {
@@ -48,6 +50,7 @@ export const useStore = create<StoreState>((set) => ({
   theme: initialTheme,
   heroModelReady: false,
   isModalOpen: false,
+  pendingScrollTarget: null,
   setActive: (id) => set({ active: id }),
   setHovered: (id) => set({ hovered: id }),
   enter: () => set({ entered: true }),
@@ -64,6 +67,7 @@ export const useStore = create<StoreState>((set) => ({
   },
   setHeroModelReady: (ready) => set({ heroModelReady: ready }),
   setIsModalOpen: (open) => set({ isModalOpen: open }),
+  setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
 }))
 
 // 开发期调试钩子：可在 console 用 __store.getState().setActive('ads')

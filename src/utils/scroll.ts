@@ -3,7 +3,7 @@
  * so that the artwork cards are vertically centered in the viewport with the
  * WORKS heading naturally visible above them.
  */
-export function scrollToWorks() {
+export function scrollToWorks(forcedBehavior?: ScrollBehavior) {
   if (typeof window === 'undefined') return
 
   const galleryEl = document.querySelector('.wk-gallery') as HTMLElement | null
@@ -13,7 +13,7 @@ export function scrollToWorks() {
 
   const prefersReducedMotion =
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  const behavior: ScrollBehavior = prefersReducedMotion ? 'instant' : 'smooth'
+  const behavior: ScrollBehavior = prefersReducedMotion ? 'instant' : (forcedBehavior || 'smooth')
 
   if (galleryEl) {
     const galleryRect = galleryEl.getBoundingClientRect()

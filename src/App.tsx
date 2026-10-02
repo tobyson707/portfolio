@@ -265,6 +265,44 @@ function PublicPortfolio() {
   const currentView = useStore((s) => s.currentView)
   const theme = useStore((s) => s.theme)
   const setTheme = useStore((s) => s.setTheme)
+  const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
+  const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
+
+  // Handle cross-page pending scroll target (e.g. Navigating to 'works' from About page)
+  useEffect(() => {
+    if (currentView === 'home' && pendingScrollTarget === 'works') {
+      let cancelled = false
+      let attempts = 0
+
+      const checkAndScroll = () => {
+        if (cancelled) return
+        const worksEl = document.getElementById('works') || document.querySelector('.wk-gallery')
+
+        if (worksEl) {
+          scrollToWorks('smooth')
+          setPendingScrollTarget(null)
+
+          // Secondary scroll verification after Framer Motion page transition completes
+          setTimeout(() => {
+            if (!cancelled) {
+              scrollToWorks('smooth')
+            }
+          }, 380)
+        } else if (attempts < 25) {
+          attempts++
+          setTimeout(checkAndScroll, 50)
+        } else {
+          setPendingScrollTarget(null)
+        }
+      }
+
+      const timer = setTimeout(checkAndScroll, 80)
+      return () => {
+        cancelled = true
+        clearTimeout(timer)
+      }
+    }
+  }, [currentView, pendingScrollTarget, setPendingScrollTarget])
 
   // Initialize analytics & track views
   useEffect(() => {
