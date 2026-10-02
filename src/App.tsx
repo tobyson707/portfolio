@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useEffect } from 'react'
+import React, { Suspense, useRef, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from 'framer-motion'
 import * as THREE from 'three'
@@ -172,6 +172,18 @@ function HomeView() {
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
   const { scrollY } = useScroll()
 
+  const [isMobileScreen, setIsMobileScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth <= 768)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   // Handle pending scroll target when HomeView mounts into DOM or transitions from About
   useEffect(() => {
     if (pendingScrollTarget === 'works') {
@@ -229,21 +241,25 @@ function HomeView() {
       transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
     >
 
-      {/* 固定的 3D 背景 (仅在首页视图时渲染与运行，极致性能优化) */}
+      {/* 固定的 3D 背景 (在移动端打开 About 时释放背景 WebGL 避免双 Context 竞争与 GPU 崩溃) */}
       <div className="scene-bg">
         <CanvasErrorBoundary>
-          <Canvas
-            frameloop={isAboutOpen ? 'never' : 'always'}
-            shadows={{ type: THREE.PCFShadowMap }}
-            dpr={[1, 1.5]}
-            camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
-            gl={{ alpha: true, antialias: false, stencil: false, depth: true, toneMapping: THREE.ACESFilmicToneMapping }}
-          >
-            <Suspense fallback={null}>
-              <Backdrop />
-              <Scene />
-            </Suspense>
-          </Canvas>
+          {!(isAboutOpen && isMobileScreen) ? (
+            <Canvas
+              frameloop={isAboutOpen ? 'never' : 'always'}
+              shadows={{ type: THREE.PCFShadowMap }}
+              dpr={[1, 1.5]}
+              camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
+              gl={{ alpha: true, antialias: false, stencil: false, depth: true, toneMapping: THREE.ACESFilmicToneMapping }}
+            >
+              <Suspense fallback={null}>
+                <Backdrop />
+                <Scene />
+              </Suspense>
+            </Canvas>
+          ) : (
+            <div className="canvas-fallback" />
+          )}
         </CanvasErrorBoundary>
       </div>
 

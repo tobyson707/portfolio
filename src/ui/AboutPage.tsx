@@ -11,20 +11,73 @@ import {
   trackSocialClick,
 } from '../services/analytics'
 
-class AboutModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() {
-    return { hasError: true };
+/**
+ * Checks whether WebGL is safely supported by the browser/GPU.
+ */
+function isWebGLAvailable(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const canvas = document.createElement('canvas')
+    const gl =
+      canvas.getContext('webgl2') ||
+      canvas.getContext('webgl') ||
+      canvas.getContext('experimental-webgl')
+    return Boolean(
+      gl &&
+        (gl instanceof WebGLRenderingContext ||
+          (window.WebGL2RenderingContext && gl instanceof WebGL2RenderingContext))
+    )
+  } catch {
+    return false
   }
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.warn('[TOBI XP] About 3D Model load error, switching to fallback:', error, errorInfo);
+}
+
+/**
+ * Top-level Error Boundary around the 3D Canvas to catch any WebGL initialization,
+ * shader compilation, or resource crashes and fall back smoothly without breaking the page.
+ */
+class AboutCanvasErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.warn('[TOBI XP] About 3D Canvas error, switching to graceful fallback:', error, errorInfo)
   }
   render() {
     if (this.state.hasError) {
-      return this.props.fallback;
+      return this.props.fallback
     }
-    return this.props.children;
+    return this.props.children
   }
+}
+
+/**
+ * High-fidelity static visual fallback representing the 3D character sculpture.
+ * Used when WebGL is unsupported, context is lost, or memory is constrained on low-end mobile devices.
+ */
+function AboutCharacterFallback({ onInteract }: { onInteract?: () => void }) {
+  return (
+    <div className="about-fallback-container" onClick={onInteract}>
+      <div className="about-fallback-stage">
+        <img
+          src="/images/about_character_fallback.jpg"
+          alt="TOBI XP 3D Mask Sculpture"
+          className="about-fallback-img"
+          loading="eager"
+          draggable={false}
+        />
+        <div className="about-fallback-shadow" aria-hidden="true" />
+      </div>
+      <div className="about-fallback-badge">
+        <span className="about-drag-cue-dot" />
+        <span className="about-drag-cue-text">3D MASK SCULPTURE</span>
+      </div>
+    </div>
+  )
 }
 
 function AboutFallbackModel() {
@@ -64,8 +117,8 @@ function AboutFallbackModel() {
   )
 }
 
-// 3D 展品模型组件 (Exhibition Model scaled down by ~2x for comfortable framing)
-function ExhibitionModelContent() {
+// 3D 展品模型组件 (Exhibition Model Content)
+function ExhibitionModelContent({ isMobile }: { isMobile: boolean }) {
   const { scene } = useGLTF(
     `${import.meta.env.BASE_URL}models/mask.glb`,
     `${import.meta.env.BASE_URL}draco/gltf/`
@@ -75,28 +128,35 @@ function ExhibitionModelContent() {
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true)
     clone.traverse((o: any) => {
-      // Ensure any embedded key light in the loaded model is removed
+      // Remove any embedded key light in the loaded model
       if (o.isLight && (/key/i.test(o.name) || /main/i.test(o.name))) {
         o.parent?.remove(o)
       }
       if (o.isMesh) {
-        o.castShadow = true
-        o.receiveShadow = true
-        if (o.geometry) {
-          o.geometry.computeVertexNormals()
-        }
-        if (o.material) {
-          const mats = Array.isArray(o.material) ? o.material : [o.material]
-          mats.forEach((m: any) => {
-            m.needsUpdate = true
-          })
-        }
+        // Only enable expensive real-time shadow passes on non-mobile
+        o.castShadow = !isMobile
+        o.receiveShadow = !isMobile
       }
     })
     return clone
-  }, [scene])
+  }, [scene, isMobile])
 
-  // 微幅待机呼吸摆动
+  // Cleanup cloned scene materials on unmount to prevent GPU memory leaks
+  useEffect(() => {
+    return () => {
+      clonedScene.traverse((o: any) => {
+        if (o.isMesh && o.material) {
+          if (Array.isArray(o.material)) {
+            o.material.forEach((m: any) => m.dispose?.())
+          } else {
+            o.material.dispose?.()
+          }
+        }
+      })
+    }
+  }, [clonedScene])
+
+  // Subtle breathing idle animation
   useFrame((state) => {
     if (groupRef.current) {
       const t = state.clock.getElapsedTime()
@@ -105,7 +165,7 @@ function ExhibitionModelContent() {
   })
 
   return (
-    <group ref={groupRef} scale={0.42}>
+    <group ref={groupRef} scale={isMobile ? 0.38 : 0.42}>
       <Center position={[0, 0, 0]}>
         <primitive object={clonedScene} />
       </Center>
@@ -113,11 +173,152 @@ function ExhibitionModelContent() {
   )
 }
 
-function ExhibitionModel() {
+function About3DViewer({
+  theme,
+  onInteract,
+  hasInteracted,
+}: {
+  theme: 'light' | 'dark'
+  onInteract: () => void
+  hasInteracted: boolean
+}) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 960 : false
+  )
+  const [hasContextLost, setHasContextLost] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 960)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  if (hasContextLost) {
+    return <AboutCharacterFallback onInteract={onInteract} />
+  }
+
   return (
-    <AboutModelErrorBoundary fallback={<AboutFallbackModel />}>
-      <ExhibitionModelContent />
-    </AboutModelErrorBoundary>
+    <div className="about-canvas-wrapper" style={{ touchAction: 'pan-y' }}>
+      <Canvas
+        shadows={!isMobile}
+        dpr={isMobile ? 1 : [1, 1.5]}
+        camera={{ position: [0, 0.05, 3.2], fov: isMobile ? 42 : 38, near: 0.1, far: 30 }}
+        gl={{
+          antialias: !isMobile,
+          powerPreference: isMobile ? 'low-power' : 'default',
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.08,
+        }}
+        onCreated={({ gl }) => {
+          const dom = gl.domElement
+          const handleLoss = (e: Event) => {
+            e.preventDefault()
+            console.warn('[TOBI XP] WebGL Context lost in About viewer, falling back to static visual')
+            setHasContextLost(true)
+          }
+          dom.addEventListener('webglcontextlost', handleLoss, false)
+        }}
+        style={{ touchAction: 'pan-y' }}
+      >
+        <color attach="background" args={[theme === 'dark' ? '#0D0D0F' : '#ffffff']} />
+
+        {/* Lighting system */}
+        <ambientLight intensity={isMobile ? 1.4 : 1.25} color="#ffffff" />
+        <directionalLight
+          position={[-4.5, 3.8, -2.5]}
+          intensity={0.6}
+          color="#eef3fc"
+        />
+        <directionalLight
+          position={[0, 3, -4]}
+          intensity={0.4}
+          color="#ffffff"
+        />
+
+        <Suspense fallback={<AboutFallbackModel />}>
+          <ExhibitionModelContent isMobile={isMobile} />
+          {!isMobile ? (
+            <ContactShadows
+              position={[0, -1.05, 0]}
+              opacity={0.42}
+              scale={3.6}
+              blur={2.2}
+              far={2.5}
+              color="#161c18"
+            />
+          ) : (
+            /* Lightweight procedural shadow disc on mobile: 1 simple draw call, 0 FBO passes */
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.02, 0]}>
+              <circleGeometry args={[0.9, 24]} />
+              <meshBasicMaterial
+                color="#000000"
+                transparent
+                opacity={theme === 'dark' ? 0.35 : 0.12}
+              />
+            </mesh>
+          )}
+        </Suspense>
+
+        <OrbitControls
+          makeDefault
+          enableZoom={!isMobile}
+          enablePan={false}
+          enableRotate={true}
+          minDistance={1.8}
+          maxDistance={4.8}
+          minPolarAngle={Math.PI / 4}
+          maxPolarAngle={Math.PI / 2 + 0.05}
+          dampingFactor={0.06}
+          rotateSpeed={isMobile ? 0.6 : 0.8}
+          touches={{
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.PAN,
+          }}
+          onStart={onInteract}
+        />
+      </Canvas>
+
+      <AnimatePresence>
+        {!hasInteracted && (
+          <motion.div
+            className="about-drag-cue"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6, transition: { duration: 0.3 } }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            aria-hidden="true"
+          >
+            <span className="about-drag-cue-dot" />
+            <span className="about-drag-cue-text">DRAG TO EXPLORE</span>
+            <span className="about-drag-cue-arrow">↻</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function AboutModelSection({
+  theme,
+  onInteract,
+  hasInteracted,
+}: {
+  theme: 'light' | 'dark'
+  onInteract: () => void
+  hasInteracted: boolean
+}) {
+  const webGLSupported = useMemo(() => isWebGLAvailable(), [])
+
+  if (!webGLSupported) {
+    return <AboutCharacterFallback onInteract={onInteract} />
+  }
+
+  return (
+    <AboutCanvasErrorBoundary fallback={<AboutCharacterFallback onInteract={onInteract} />}>
+      <About3DViewer theme={theme} onInteract={onInteract} hasInteracted={hasInteracted} />
+    </AboutCanvasErrorBoundary>
   )
 }
 
@@ -275,84 +476,18 @@ export default function AboutPage({ onClose }: AboutPageProps) {
 
       {/* 两栏主区域 */}
       <div className="about-layout">
-        {/* 左栏：交互式 3D 展台 */}
+        {/* 左栏：交互式 3D 展台 (带 WebGL 支持检测与优雅降级) */}
         <section
           className="about-model-col"
           onPointerDown={handleInteraction}
           onTouchStart={handleInteraction}
           aria-label="3D Model Viewer"
         >
-          <div className="about-canvas-wrapper">
-            <Canvas
-              shadows
-              dpr={typeof window !== 'undefined' && window.innerWidth <= 768 ? [1, 1.25] : [1, 1.5]}
-              camera={{ position: [0, 0.05, 3.2], fov: 38, near: 0.1, far: 50 }}
-              gl={{
-                antialias: true,
-                powerPreference: 'default',
-                toneMapping: THREE.ACESFilmicToneMapping,
-                toneMappingExposure: 1.08,
-              }}
-            >
-              <color attach="background" args={[theme === 'dark' ? '#0D0D0F' : '#ffffff']} />
-
-              {/* 摄影棚灯光系统 (Key Light completely removed) */}
-              <ambientLight intensity={1.25} color="#ffffff" />
-              <directionalLight
-                position={[-4.5, 3.8, -2.5]}
-                intensity={0.6}
-                color="#eef3fc"
-              />
-              <directionalLight
-                position={[0, 3, -4]}
-                intensity={0.4}
-                color="#ffffff"
-              />
-
-              <Suspense fallback={null}>
-                <ExhibitionModel />
-                <ContactShadows
-                  position={[0, -1.05, 0]}
-                  opacity={0.42}
-                  scale={3.6}
-                  blur={2.2}
-                  far={2.5}
-                  color="#161c18"
-                />
-              </Suspense>
-
-              <OrbitControls
-                makeDefault
-                enableZoom={true}
-                enablePan={false}
-                enableRotate={true}
-                minDistance={1.8}
-                maxDistance={4.8}
-                minPolarAngle={Math.PI / 4}
-                maxPolarAngle={Math.PI / 2 + 0.05}
-                dampingFactor={0.06}
-                rotateSpeed={0.8}
-                onStart={handleInteraction}
-              />
-            </Canvas>
-          </div>
-
-          <AnimatePresence>
-            {!hasInteracted && (
-              <motion.div
-                className="about-drag-cue"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6, transition: { duration: 0.3 } }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                aria-hidden="true"
-              >
-                <span className="about-drag-cue-dot" />
-                <span className="about-drag-cue-text">DRAG TO EXPLORE</span>
-                <span className="about-drag-cue-arrow">↻</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <AboutModelSection
+            theme={theme}
+            onInteract={handleInteraction}
+            hasInteracted={hasInteracted}
+          />
         </section>
 
         {/* 右栏：About 信息与社交媒体链接 */}
@@ -382,7 +517,7 @@ export default function AboutPage({ onClose }: AboutPageProps) {
                   'UI/UX Design',
                   'Product Design',
                   'Brand Identity',
-                  'Simulation Design',
+                  'Interaction Design',
                   'Visual Storytelling',
                   'Concept Art',
                   '3D Design',

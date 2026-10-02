@@ -283,7 +283,7 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
       'UI/UX Design',
       'Product Design',
       'Brand Identity',
-      'Simulation Design',
+      'Interaction Design',
       'Visual Storytelling',
       'Concept Art',
       '3D Design',
