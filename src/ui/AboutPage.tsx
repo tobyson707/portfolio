@@ -7,7 +7,6 @@ import TypingNarrative from './TypingNarrative'
 import { useStore } from '../store'
 import { useContentStore } from '../services/contentStore'
 import {
-  trackPageView,
   trackMediaInteraction,
   trackSocialClick,
 } from '../services/analytics'
@@ -122,16 +121,59 @@ function ExhibitionModel() {
   )
 }
 
-export default function AboutPage() {
-  const setCurrentView = useStore((state) => state.setCurrentView)
+interface AboutPageProps {
+  onClose?: () => void
+}
+
+export default function AboutPage({ onClose }: AboutPageProps) {
+  const setIsAboutOpen = useStore((state) => state.setIsAboutOpen)
+  const savedHomeScrollY = useStore((state) => state.savedHomeScrollY)
   const theme = useStore((state) => state.theme)
   const about = useContentStore((state) => state.site.about)
   const social = useContentStore((state) => state.site.social)
   const [hasInteracted, setHasInteracted] = useState(false)
 
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose()
+    } else {
+      setIsAboutOpen(false)
+    }
+  }, [onClose, setIsAboutOpen])
+
+  // ESC key to dismiss overlay
   useEffect(() => {
-    trackPageView('About', '/about')
-  }, [])
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const isMenuOpen = document.querySelector('.editorial-menu-backdrop')
+        if (!isMenuOpen) {
+          handleClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleClose])
+
+  // Lock background scrolling while overlay is open, and restore previous scroll on close
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const scrollYBefore = typeof window !== 'undefined' ? window.scrollY : 0
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow
+      document.documentElement.style.overflow = originalHtmlOverflow
+      const pendingScroll = useStore.getState().pendingScrollTarget
+      if (!pendingScroll && typeof window !== 'undefined') {
+        const targetScroll = savedHomeScrollY || scrollYBefore
+        window.scrollTo({ top: targetScroll, behavior: 'instant' })
+      }
+    }
+  }, [savedHomeScrollY])
 
   const handleInteraction = useCallback(() => {
     if (!hasInteracted) {
@@ -160,24 +202,69 @@ export default function AboutPage() {
         ]
   }, [about])
 
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
   return (
-    <div className="about-page-root" lang="en">
-      {/* 顶部常驻 Branding Logo (带适当内边距) */}
-      <header className="about-top-bar">
-        <button
-          type="button"
-          className="about-logo-btn"
-          onClick={() => setCurrentView('home')}
-          aria-label="Return to Home"
-          title="Return to Home"
-        >
-          <img
-            src="/images/xp.png"
-            alt="TOBI XP"
-            className="hero-xp-logo"
-          />
-        </button>
-      </header>
+    <motion.div
+      className="about-overlay-wrapper"
+      role="dialog"
+      aria-modal="true"
+      aria-label="About TOBI XP"
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.988 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.988 }}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0.15 }
+          : { duration: 0.38, ease: [0.16, 1, 0.3, 1] }
+      }
+    >
+      <div className="about-page-root" lang="en">
+        {/* 顶部常驻 Branding Logo + Clear Accessible Close Control (X) */}
+        <header className="about-top-bar" role="banner">
+          <button
+            type="button"
+            className="about-logo-btn"
+            onClick={handleClose}
+            aria-label="Return to Home"
+            title="Return to Home"
+          >
+            <img
+              src="/images/xp.png"
+              alt="TOBI XP"
+              className="hero-xp-logo"
+            />
+          </button>
+
+          <div className="about-top-actions">
+            <button
+              type="button"
+              className="about-close-btn"
+              onClick={handleClose}
+              aria-label="Close About overlay"
+              title="Close [Esc]"
+            >
+              <span className="about-close-btn-text">CLOSE</span>
+              <span className="about-close-btn-icon" aria-hidden="true">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </header>
 
       {/* 两栏主区域 */}
       <div className="about-layout">
@@ -334,6 +421,7 @@ export default function AboutPage() {
         </section>
       </div>
     </div>
+  </motion.div>
   )
 }
 

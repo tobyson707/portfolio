@@ -9,6 +9,7 @@ let hasBeenDismissedInSession = false
 export default function SoundActivationPrompt() {
   const entered = useStore((s) => s.entered)
   const currentView = useStore((s) => s.currentView)
+  const isAboutOpen = useStore((s) => s.isAboutOpen)
   
   const [isDismissed, setIsDismissed] = useState<boolean>(() => hasBeenDismissedInSession)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
@@ -137,8 +138,8 @@ export default function SoundActivationPrompt() {
     return null
   }
 
-  // Only show on home view once loading curtain has lifted (entered is true)
-  const isVisible = entered && currentView === 'home'
+  // Only show on home view once loading curtain has lifted (entered is true) and About overlay is not open
+  const isVisible = entered && currentView === 'home' && !isAboutOpen
 
   return (
     <AnimatePresence>

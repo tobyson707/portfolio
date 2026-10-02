@@ -293,26 +293,58 @@ function HomeView() {
 
 function PublicPortfolio() {
   const currentView = useStore((s) => s.currentView)
+  const isAboutOpen = useStore((s) => s.isAboutOpen)
+  const setIsAboutOpen = useStore((s) => s.setIsAboutOpen)
   const theme = useStore((s) => s.theme)
   const setTheme = useStore((s) => s.setTheme)
 
-  // Initialize analytics & track views
+  // Initialize analytics & check initial route
   useEffect(() => {
     initAnalytics()
     const path = window.location.pathname
     if (path && path !== '/' && path !== '/index.html') {
       if (path === '/about' || path.includes('about')) {
-        useStore.getState().setCurrentView('about')
+        setIsAboutOpen(true)
       } else {
         useStore.getState().setCurrentView('404')
       }
     }
-  }, [])
+  }, [setIsAboutOpen])
+
+  // Browser history popstate (Back/Forward buttons)
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname
+      if (path === '/about' || path.includes('about')) {
+        setIsAboutOpen(true)
+      } else if (path === '/' || path === '/index.html') {
+        setIsAboutOpen(false)
+        useStore.getState().setCurrentView('home')
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [setIsAboutOpen])
 
   useEffect(() => {
-    const pageName = currentView === 'about' ? 'About' : currentView === '404' ? '404 Not Found' : 'Home'
-    const pagePath = currentView === 'about' ? '/about' : currentView === '404' ? '/404' : '/'
+    if (currentView === '404') {
+      trackPageView('404 Not Found', '/404')
+      return
+    }
+
+    const pageName = isAboutOpen ? 'About' : 'Home'
+    const pagePath = isAboutOpen ? '/about' : '/'
     trackPageView(pageName, pagePath)
+
+    if (isAboutOpen) {
+      if (window.location.pathname !== '/about') {
+        window.history.pushState(null, '', '/about')
+      }
+    } else {
+      if (window.location.pathname === '/about') {
+        window.history.pushState(null, '', '/')
+      }
+    }
 
     const startTime = Date.now()
     return () => {
@@ -321,11 +353,11 @@ function PublicPortfolio() {
         recordEngagementTime(elapsedSeconds, pageName)
       }
     }
-  }, [currentView])
+  }, [isAboutOpen, currentView])
 
   // Track meaningful scroll milestones on home page (25%, 50%, 75%, 90%)
   useEffect(() => {
-    if (currentView !== 'home') return
+    if (currentView !== 'home' || isAboutOpen) return
 
     const handleScroll = () => {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight
@@ -345,7 +377,7 @@ function PublicPortfolio() {
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [currentView])
+  }, [currentView, isAboutOpen])
 
   // Theme persistence & system preference
   useEffect(() => {
@@ -367,30 +399,17 @@ function PublicPortfolio() {
       {/* 加载遮罩：模型全部加载完成前覆盖全屏，完成后淡出 */}
       <LoadingScreen />
 
-      {/* 主视图切换：Home (3D 交互首页与作品集) vs About (3D 展台关于空间) */}
-      <AnimatePresence mode="wait">
-        {currentView === 'about' ? (
-          <motion.div
-            key="about-view"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <AboutPage />
-          </motion.div>
-        ) : currentView === '404' ? (
-          <motion.div
-            key="404-view"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <NotFoundPage />
-          </motion.div>
-        ) : (
-          <HomeView key="home-view" />
+      {/* 主视图：404 独立渲染，首页常驻挂载以维持 3D 场景与滚动状态 */}
+      {currentView === '404' ? (
+        <NotFoundPage />
+      ) : (
+        <HomeView key="home-view" />
+      )}
+
+      {/* 全屏电影感 About 遮罩层 (Full-Screen About Overlay) */}
+      <AnimatePresence>
+        {isAboutOpen && (
+          <AboutPage key="about-overlay" onClose={() => setIsAboutOpen(false)} />
         )}
       </AnimatePresence>
 

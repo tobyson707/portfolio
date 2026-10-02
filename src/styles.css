@@ -3430,22 +3430,40 @@ canvas {
 }
 
 /* ==========================================================================
-   About Page — Interactive 3D Profile & Exhibition Room
+   About Overlay — Full-screen Cinematic Interactive Profile
    ========================================================================== */
+.about-overlay-wrapper {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: var(--background, #ffffff);
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.28);
+}
+
 .about-page-root {
   position: relative;
   width: 100%;
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--background, #ffffff);
   color: var(--ink);
   overflow-x: hidden;
 }
 
 .about-top-bar {
   position: fixed;
-  top: 30px;
-  left: 36px;
+  top: max(20px, env(safe-area-inset-top, 20px));
+  left: max(24px, env(safe-area-inset-left, 24px));
+  right: max(24px, env(safe-area-inset-right, 24px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   z-index: 80;
+  pointer-events: none;
 }
 
 .about-logo-btn {
@@ -3455,6 +3473,97 @@ canvas {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  pointer-events: auto;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.about-logo-btn:hover {
+  transform: scale(1.05);
+  opacity: 0.85;
+}
+
+.about-logo-btn:focus-visible {
+  outline: 2px solid var(--accent, #F15723);
+  outline-offset: 4px;
+}
+
+.about-top-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  /* Sits cleanly next to the fixed nav hamburger trigger */
+  margin-right: 56px;
+  pointer-events: auto;
+}
+
+.about-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  background: var(--control-background);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--control-text);
+  font-family: var(--font-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.22s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.about-close-btn:hover {
+  transform: scale(1.04);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--accent, #F15723);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.about-close-btn:active {
+  transform: scale(0.96);
+}
+
+.about-close-btn:focus-visible {
+  outline: 2px solid var(--accent, #F15723);
+  outline-offset: 3px;
+}
+
+.about-close-btn-text {
+  line-height: 1;
+}
+
+.about-close-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .about-top-actions {
+    margin-right: 48px;
+  }
+  .about-close-btn {
+    width: 44px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .about-close-btn-text {
+    display: none;
+  }
 }
 
 .about-layout {
@@ -4998,7 +5107,7 @@ canvas {
   position: fixed;
   right: max(24px, env(safe-area-inset-right, 24px));
   bottom: max(24px, env(safe-area-inset-bottom, 24px));
-  z-index: 900;
+  z-index: 1100;
   display: flex;
   flex-direction: column;
   align-items: flex-end;

@@ -35,6 +35,8 @@ export default function NavigationMenu() {
   const setCurrentView = useStore((s) => s.setCurrentView)
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
   const isModalOpen = useStore((s) => s.isModalOpen)
+  const isAboutOpen = useStore((s) => s.isAboutOpen)
+  const setIsAboutOpen = useStore((s) => s.setIsAboutOpen)
   const social = useContentStore((s) => s.site.social)
   const contact = useContentStore((s) => s.site.contact)
 
@@ -100,27 +102,36 @@ export default function NavigationMenu() {
       setIsOpen(false)
 
       if (item.id === 'about') {
-        if (currentView !== 'about') {
-          window.scrollTo({ top: 0, behavior: 'instant' })
-          setCurrentView('about')
-        }
-      } else if (item.id === 'home') {
-        if (currentView !== 'home') {
-          window.scrollTo({ top: 0, behavior: 'instant' })
+        if (currentView === '404') {
           setCurrentView('home')
-        } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
         }
+        setIsAboutOpen(true)
+      } else if (item.id === 'home') {
+        if (isAboutOpen) {
+          setIsAboutOpen(false)
+        }
+        if (currentView !== 'home') {
+          setCurrentView('home')
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       } else if (item.id === 'works') {
+        if (isAboutOpen) {
+          setIsAboutOpen(false)
+        }
         if (currentView !== 'home') {
           setPendingScrollTarget('works')
           setCurrentView('home')
         } else {
-          scrollToWorks()
+          document.body.style.overflow = ''
+          document.documentElement.style.overflow = ''
+          scrollToWorks('smooth')
+          requestAnimationFrame(() => {
+            scrollToWorks('smooth')
+          })
         }
       }
     },
-    [currentView, setCurrentView, setPendingScrollTarget]
+    [currentView, setCurrentView, setPendingScrollTarget, isAboutOpen, setIsAboutOpen]
   )
 
   const handleItemMouseMove = (
@@ -344,6 +355,9 @@ export default function NavigationMenu() {
                             className="editorial-social-link"
                             onClick={() => {
                               setIsOpen(false)
+                              if (isAboutOpen) {
+                                setIsAboutOpen(false)
+                              }
                               if (currentView !== 'home') {
                                 setCurrentView('home')
                                 setTimeout(() => {

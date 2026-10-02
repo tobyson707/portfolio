@@ -10,6 +10,8 @@ interface StoreState {
   heroModelReady: boolean
   isModalOpen: boolean
   pendingScrollTarget: string | null
+  isAboutOpen: boolean
+  savedHomeScrollY: number
   setActive: (id: string | null) => void
   setHovered: (id: string | null) => void
   enter: () => void
@@ -19,6 +21,8 @@ interface StoreState {
   setHeroModelReady: (ready: boolean) => void
   setIsModalOpen: (open: boolean) => void
   setPendingScrollTarget: (target: string | null) => void
+  setIsAboutOpen: (open: boolean) => void
+  setSavedHomeScrollY: (y: number) => void
 }
 
 const getInitialTheme = (): 'light' | 'dark' => {
@@ -51,6 +55,8 @@ export const useStore = create<StoreState>((set) => ({
   heroModelReady: false,
   isModalOpen: false,
   pendingScrollTarget: null,
+  isAboutOpen: false,
+  savedHomeScrollY: 0,
   setActive: (id) => set({ active: id }),
   setHovered: (id) => set({ hovered: id }),
   enter: () => set({ entered: true }),
@@ -68,6 +74,14 @@ export const useStore = create<StoreState>((set) => ({
   setHeroModelReady: (ready) => set({ heroModelReady: ready }),
   setIsModalOpen: (open) => set({ isModalOpen: open }),
   setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
+  setIsAboutOpen: (open) =>
+    set((state) => {
+      if (open && !state.isAboutOpen && typeof window !== 'undefined') {
+        return { isAboutOpen: true, savedHomeScrollY: window.scrollY }
+      }
+      return { isAboutOpen: open }
+    }),
+  setSavedHomeScrollY: (y) => set({ savedHomeScrollY: y }),
 }))
 
 // 开发期调试钩子：可在 console 用 __store.getState().setActive('ads')
