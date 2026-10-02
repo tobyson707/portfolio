@@ -110,25 +110,30 @@ export default function NavigationMenu() {
         if (isAboutOpen) {
           setIsAboutOpen(false)
         }
+        setPendingScrollTarget('home')
+        document.body.style.overflow = ''
+        document.documentElement.style.overflow = ''
         if (currentView !== 'home') {
           setCurrentView('home')
         }
         window.scrollTo({ top: 0, behavior: 'smooth' })
+        setTimeout(() => {
+          setPendingScrollTarget(null)
+        }, 120)
       } else if (item.id === 'works') {
         if (isAboutOpen) {
           setIsAboutOpen(false)
         }
+        setPendingScrollTarget('works')
+        document.body.style.overflow = ''
+        document.documentElement.style.overflow = ''
         if (currentView !== 'home') {
-          setPendingScrollTarget('works')
           setCurrentView('home')
-        } else {
-          document.body.style.overflow = ''
-          document.documentElement.style.overflow = ''
-          scrollToWorks('smooth')
-          requestAnimationFrame(() => {
-            scrollToWorks('smooth')
-          })
         }
+        scrollToWorks('smooth')
+        setTimeout(() => {
+          scrollToWorks('smooth')
+        }, 60)
       }
     },
     [currentView, setCurrentView, setPendingScrollTarget, isAboutOpen, setIsAboutOpen]

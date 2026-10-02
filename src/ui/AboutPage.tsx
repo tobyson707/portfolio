@@ -222,39 +222,33 @@ export default function AboutPage({ onClose }: AboutPageProps) {
       }
     >
       <div className="about-page-root" lang="en">
-        {/* 顶部常驻 Branding Logo + Clear Accessible Close Control (X) */}
+        {/* 顶部常驻 Branding Logo + Single Clearly Visible Close Control (X) */}
         <header className="about-top-bar" role="banner">
-          <button
-            type="button"
-            className="about-logo-btn"
-            onClick={handleClose}
-            aria-label="Return to Home"
-            title="Return to Home"
-          >
+          <div className="about-brand-logo" aria-hidden="true">
             <img
               src="/images/xp.png"
               alt="TOBI XP"
               className="hero-xp-logo"
             />
-          </button>
+          </div>
 
           <div className="about-top-actions">
             <button
               type="button"
               className="about-close-btn"
               onClick={handleClose}
-              aria-label="Close About overlay"
+              aria-label="Close About"
               title="Close [Esc]"
             >
               <span className="about-close-btn-text">CLOSE</span>
               <span className="about-close-btn-icon" aria-hidden="true">
                 <svg
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2.4"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >

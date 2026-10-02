@@ -304,26 +304,17 @@ function PublicPortfolio() {
     const path = window.location.pathname
     if (path && path !== '/' && path !== '/index.html') {
       if (path === '/about' || path.includes('about')) {
+        // Gracefully normalize URL to root without reload, open overlay
+        try {
+          window.history.replaceState(null, '', '/')
+        } catch {
+          // ignore
+        }
         setIsAboutOpen(true)
       } else {
         useStore.getState().setCurrentView('404')
       }
     }
-  }, [setIsAboutOpen])
-
-  // Browser history popstate (Back/Forward buttons)
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname
-      if (path === '/about' || path.includes('about')) {
-        setIsAboutOpen(true)
-      } else if (path === '/' || path === '/index.html') {
-        setIsAboutOpen(false)
-        useStore.getState().setCurrentView('home')
-      }
-    }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
   }, [setIsAboutOpen])
 
   useEffect(() => {
@@ -333,18 +324,7 @@ function PublicPortfolio() {
     }
 
     const pageName = isAboutOpen ? 'About' : 'Home'
-    const pagePath = isAboutOpen ? '/about' : '/'
-    trackPageView(pageName, pagePath)
-
-    if (isAboutOpen) {
-      if (window.location.pathname !== '/about') {
-        window.history.pushState(null, '', '/about')
-      }
-    } else {
-      if (window.location.pathname === '/about') {
-        window.history.pushState(null, '', '/')
-      }
-    }
+    trackPageView(pageName, '/')
 
     const startTime = Date.now()
     return () => {

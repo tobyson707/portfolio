@@ -3462,8 +3462,15 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 80;
+  z-index: 2050;
   pointer-events: none;
+}
+
+.about-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  pointer-events: auto;
 }
 
 .about-logo-btn {
