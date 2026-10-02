@@ -48,8 +48,31 @@ export default function TypingNarrative({ paragraphs }: TypingNarrativeProps) {
     )
 
     observer.observe(el)
-    return () => observer.disconnect()
+
+    // Fallback: Ensure typing starts once overlay has animated into view on desktop
+    const fallbackTimer = setTimeout(() => {
+      if (el && typeof window !== 'undefined' && el.getBoundingClientRect().top < window.innerHeight) {
+        setHasStarted(true)
+        observer.disconnect()
+      }
+    }, 450)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(fallbackTimer)
+    }
   }, [isCompleted, hasStarted])
+
+  // Mark session so closing and reopening during or after typing never restarts the animation
+  useEffect(() => {
+    if (hasStarted) {
+      try {
+        sessionStorage.setItem(SESSION_TYPED_KEY, 'true')
+      } catch {
+        // ignore
+      }
+    }
+  }, [hasStarted])
 
   // Typing character loop with natural typing cadence
   useEffect(() => {

@@ -68,7 +68,7 @@ function AboutFallbackModel() {
 function ExhibitionModelContent() {
   const { scene } = useGLTF(
     `${import.meta.env.BASE_URL}models/mask.glb`,
-    'https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
+    `${import.meta.env.BASE_URL}draco/gltf/`
   )
   const groupRef = useRef<THREE.Group>(null)
 

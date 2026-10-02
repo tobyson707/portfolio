@@ -76,7 +76,8 @@ export const useStore = create<StoreState>((set) => ({
   setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
   setIsAboutOpen: (open) =>
     set((state) => {
-      if (open && !state.isAboutOpen && typeof window !== 'undefined') {
+      if (state.isAboutOpen === open) return state
+      if (open && typeof window !== 'undefined') {
         return { isAboutOpen: true, savedHomeScrollY: window.scrollY }
       }
       return { isAboutOpen: open }

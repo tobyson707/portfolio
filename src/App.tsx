@@ -166,6 +166,7 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
 
 function HomeView() {
   const theme = useStore((s) => s.theme)
+  const isAboutOpen = useStore((s) => s.isAboutOpen)
   const heroContent = useContentStore((s) => s.site.hero)
   const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
@@ -236,6 +237,7 @@ function HomeView() {
       <div className="scene-bg">
         <CanvasErrorBoundary>
           <Canvas
+            frameloop={isAboutOpen ? 'never' : 'always'}
             shadows={{ type: THREE.PCFShadowMap }}
             dpr={[1, 1.5]}
             camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
