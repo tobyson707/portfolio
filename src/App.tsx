@@ -167,7 +167,37 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
 function HomeView() {
   const theme = useStore((s) => s.theme)
   const heroContent = useContentStore((s) => s.site.hero)
+  const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
+  const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
   const { scrollY } = useScroll()
+
+  // Handle pending scroll target when HomeView mounts into DOM
+  useEffect(() => {
+    if (pendingScrollTarget === 'works') {
+      let cancelled = false
+      const timer = setTimeout(() => {
+        if (cancelled) return
+        const raf = requestAnimationFrame(() => {
+          if (cancelled) return
+          scrollToWorks('smooth')
+          setPendingScrollTarget(null)
+
+          // Secondary alignment check after image layout settles
+          setTimeout(() => {
+            if (!cancelled) {
+              scrollToWorks('smooth')
+            }
+          }, 320)
+        })
+        return () => cancelAnimationFrame(raf)
+      }, 60)
+
+      return () => {
+        cancelled = true
+        clearTimeout(timer)
+      }
+    }
+  }, [pendingScrollTarget, setPendingScrollTarget])
 
   // 作品区蒙层：以作品区顶部从视口底进入到视口中部的进度，驱动 3D 柔化
   const worksRef = useRef<HTMLElement>(null)
@@ -265,44 +295,6 @@ function PublicPortfolio() {
   const currentView = useStore((s) => s.currentView)
   const theme = useStore((s) => s.theme)
   const setTheme = useStore((s) => s.setTheme)
-  const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
-  const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
-
-  // Handle cross-page pending scroll target (e.g. Navigating to 'works' from About page)
-  useEffect(() => {
-    if (currentView === 'home' && pendingScrollTarget === 'works') {
-      let cancelled = false
-      let attempts = 0
-
-      const checkAndScroll = () => {
-        if (cancelled) return
-        const worksEl = document.getElementById('works') || document.querySelector('.wk-gallery')
-
-        if (worksEl) {
-          scrollToWorks('smooth')
-          setPendingScrollTarget(null)
-
-          // Secondary scroll verification after Framer Motion page transition completes
-          setTimeout(() => {
-            if (!cancelled) {
-              scrollToWorks('smooth')
-            }
-          }, 380)
-        } else if (attempts < 25) {
-          attempts++
-          setTimeout(checkAndScroll, 50)
-        } else {
-          setPendingScrollTarget(null)
-        }
-      }
-
-      const timer = setTimeout(checkAndScroll, 80)
-      return () => {
-        cancelled = true
-        clearTimeout(timer)
-      }
-    }
-  }, [currentView, pendingScrollTarget, setPendingScrollTarget])
 
   // Initialize analytics & track views
   useEffect(() => {

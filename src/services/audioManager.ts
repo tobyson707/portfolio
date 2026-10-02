@@ -4,10 +4,15 @@
  * persistent volume/mute state, and auto-initiation on first user interaction.
  */
 
-const AUDIO_URL = '/audio/beat%20(1).mp3'
+const getAudioUrl = () => {
+  const baseUrl = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : '/'
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+  return `${cleanBase}audio/beat%20(1).mp3`
+}
+
 const LOCAL_STORAGE_VOLUME_KEY = 'tobi_xp_volume'
 const LOCAL_STORAGE_MUTED_KEY = 'tobi_xp_muted'
-const DEFAULT_VOLUME = 0.4
+const DEFAULT_VOLUME = 0.3 // Default volume set to 30%
 const FADE_IN_DURATION_MS = 1000
 const FADE_OUT_DURATION_MS = 600
 
@@ -24,7 +29,6 @@ class AudioManager {
   private audio: HTMLAudioElement | null = null
   private listeners = new Set<AudioListener>()
   private fadeAnimationId: number | null = null
-  private isUserInteracted = false
   private duckMultiplier = 1.0
 
   private state: AudioState = {
@@ -38,7 +42,6 @@ class AudioManager {
     if (typeof window !== 'undefined') {
       this.initFromStorage()
       this.initAudio()
-      this.setupInteractionListeners()
     }
   }
 
@@ -64,7 +67,7 @@ class AudioManager {
   private initAudio() {
     if (this.audio) return
     const audio = new Audio()
-    audio.src = AUDIO_URL
+    audio.src = getAudioUrl()
     audio.loop = true
     audio.preload = 'auto'
     audio.volume = 0
@@ -82,28 +85,10 @@ class AudioManager {
     })
 
     audio.addEventListener('error', (e) => {
-      console.warn('[TOBI XP Audio] Background music playback notice:', e)
+      console.warn('[TOBI XP Audio] Background music playback error:', e)
+      this.state.isPlaying = false
+      this.notify()
     })
-  }
-
-  private setupInteractionListeners() {
-    const handleFirstInteraction = () => {
-      this.isUserInteracted = true
-      window.removeEventListener('click', handleFirstInteraction)
-      window.removeEventListener('keydown', handleFirstInteraction)
-      window.removeEventListener('touchstart', handleFirstInteraction)
-      window.removeEventListener('pointerdown', handleFirstInteraction)
-
-      // Start playback with smooth fade-in if not muted and not already playing
-      if (!this.state.isMuted && this.state.volume > 0) {
-        this.play(true)
-      }
-    }
-
-    window.addEventListener('click', handleFirstInteraction, { passive: true })
-    window.addEventListener('keydown', handleFirstInteraction, { passive: true })
-    window.addEventListener('touchstart', handleFirstInteraction, { passive: true })
-    window.addEventListener('pointerdown', handleFirstInteraction, { passive: true })
   }
 
   private cancelFade() {
@@ -152,6 +137,42 @@ class AudioManager {
     this.fadeAnimationId = requestAnimationFrame(step)
   }
 
+  /**
+   * Attempts playback directly from a user gesture event.
+   * Returns a promise resolving to true if playback started successfully.
+   */
+  public async playFromUserGesture(withFade = true): Promise<boolean> {
+    if (!this.audio) this.initAudio()
+    if (!this.audio) return false
+
+    this.state.isMuted = false
+    const effectiveTarget = this.state.volume * this.duckMultiplier
+
+    if (withFade) {
+      this.audio.volume = 0
+    } else {
+      this.audio.volume = effectiveTarget
+    }
+
+    try {
+      await this.audio.play()
+      this.state.isPlaying = true
+      this.notify()
+
+      if (withFade) {
+        this.fadeVolumeTo(effectiveTarget, FADE_IN_DURATION_MS)
+      } else {
+        this.audio.volume = effectiveTarget
+      }
+      return true
+    } catch (err) {
+      console.warn('[TOBI XP Audio] User gesture play failed:', err)
+      this.state.isPlaying = false
+      this.notify()
+      return false
+    }
+  }
+
   public play(withFade = true) {
     if (!this.audio) this.initAudio()
     if (!this.audio) return
@@ -175,8 +196,9 @@ class AudioManager {
             }
           })
           .catch((err) => {
-            // Autoplay blocked by browser until user gesture
-            console.info('[TOBI XP Audio] Autoplay pending user interaction:', err?.message || err)
+            console.info('[TOBI XP Audio] Autoplay pending user gesture:', err?.message || err)
+            this.state.isPlaying = false
+            this.notify()
           })
       }
     } else {
@@ -214,7 +236,7 @@ class AudioManager {
         this.setVolume(DEFAULT_VOLUME)
       }
       this.setMuted(false)
-      this.play(true)
+      this.playFromUserGesture(true)
     } else {
       this.setMuted(true)
       this.pause(true)
@@ -249,7 +271,7 @@ class AudioManager {
       }
       if (this.audio) {
         if (this.audio.paused) {
-          this.play(true)
+          this.playFromUserGesture(true)
         } else {
           this.fadeVolumeTo(clamped * this.duckMultiplier, 150)
         }
@@ -272,7 +294,7 @@ class AudioManager {
       if (this.state.volume === 0) {
         this.setVolume(DEFAULT_VOLUME)
       } else {
-        this.play(true)
+        this.playFromUserGesture(true)
       }
     }
     this.notify()

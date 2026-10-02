@@ -54,18 +54,15 @@ export default function SoundActivationPrompt() {
   }, [])
 
   // Dismiss handler that triggers audio playback and dismisses card in-memory
-  const handleActivation = useCallback(() => {
+  const handleActivation = useCallback(async () => {
     if (isDismissedRef.current || hasBeenDismissedInSession) return
 
     hasBeenDismissedInSession = true
     setIsDismissed(true)
 
-    // Trigger audio playback through centralized audioManager
+    // Trigger audio playback through centralized audioManager directly on user gesture
     try {
-      const state = audioManager.getState()
-      if (!state.isPlaying && !state.isMuted) {
-        audioManager.play(true)
-      }
+      await audioManager.playFromUserGesture(true)
     } catch (err) {
       console.info('[TOBI XP] Background audio initial play handler notice:', err)
     }

@@ -6,36 +6,20 @@
 export function scrollToWorks(forcedBehavior?: ScrollBehavior) {
   if (typeof window === 'undefined') return
 
-  const galleryEl = document.querySelector('.wk-gallery') as HTMLElement | null
   const worksEl = document.getElementById('works')
+  const galleryEl = document.querySelector('.wk-gallery') as HTMLElement | null
+  const targetEl = worksEl || galleryEl
 
-  if (!galleryEl && !worksEl) return
+  if (!targetEl) return
 
   const prefersReducedMotion =
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
   const behavior: ScrollBehavior = prefersReducedMotion ? 'instant' : (forcedBehavior || 'smooth')
 
-  if (galleryEl) {
-    const galleryRect = galleryEl.getBoundingClientRect()
-    const galleryTop = window.scrollY + galleryRect.top
-    const firstCardEl = galleryEl.querySelector('.wk-card') as HTMLElement | null
+  const rect = targetEl.getBoundingClientRect()
+  const targetScrollY = Math.max(0, window.scrollY + rect.top)
 
-    // Responsive horizontal margin matching the header alignment
-    const isMobile = window.innerWidth <= 640
-    const leftMargin = isMobile ? 20 : Math.min(80, Math.max(24, window.innerWidth * 0.06))
-
-    // Position the gallery so the first card is at its initial viewing position
-    let targetScrollY = galleryTop
-    if (firstCardEl && firstCardEl.offsetLeft > 0) {
-      targetScrollY = galleryTop + Math.max(0, firstCardEl.offsetLeft - leftMargin)
-    }
-
-    window.scrollTo({ top: targetScrollY, behavior })
-  } else if (worksEl) {
-    const worksRect = worksEl.getBoundingClientRect()
-    const targetScrollY = window.scrollY + worksRect.top
-    window.scrollTo({ top: targetScrollY, behavior })
-  }
+  window.scrollTo({ top: targetScrollY, behavior })
 }
 
 /**

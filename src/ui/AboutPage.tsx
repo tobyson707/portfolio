@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, useGLTF, Center } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as THREE from 'three'
+import TypingNarrative from './TypingNarrative'
 import { useStore } from '../store'
 import { useContentStore } from '../services/contentStore'
 import {
@@ -143,6 +144,22 @@ export default function AboutPage() {
     }
   }, [hasInteracted])
 
+  const narrativeParagraphs = useMemo(() => {
+    if (about?.paragraphs && about.paragraphs.length > 0) {
+      return about.paragraphs
+    }
+    const fallback: string[] = []
+    if (about?.narrative) fallback.push(about.narrative)
+    if (about?.personalityNote) fallback.push(about.personalityNote)
+    return fallback.length > 0
+      ? fallback
+      : [
+          'I’m Tobi XP, an illustrator and designer who enjoys turning ideas into things people can see, use, and interact with ;)',
+          'From illustration and character design to product design and interactive experiences, I like exploring ideas, figuring things out, and seeing where they lead.',
+          'Still learning, still experimenting, and always making something.',
+        ]
+  }, [about])
+
   return (
     <div className="about-page-root" lang="en">
       {/* 顶部常驻 Branding Logo (带适当内边距) */}
@@ -174,10 +191,11 @@ export default function AboutPage() {
           <div className="about-canvas-wrapper">
             <Canvas
               shadows
-              dpr={[1, 1.5]}
+              dpr={typeof window !== 'undefined' && window.innerWidth <= 768 ? [1, 1.25] : [1, 1.5]}
               camera={{ position: [0, 0.05, 3.2], fov: 38, near: 0.1, far: 50 }}
               gl={{
                 antialias: true,
+                powerPreference: 'default',
                 toneMapping: THREE.ACESFilmicToneMapping,
                 toneMappingExposure: 1.08,
               }}
@@ -257,18 +275,7 @@ export default function AboutPage() {
               {about.heading}
             </h1>
 
-            <div className="about-narrative">
-              {about.paragraphs && about.paragraphs.length > 0 ? (
-                about.paragraphs.map((p: string, idx: number) => (
-                  <p key={idx}>{p}</p>
-                ))
-              ) : (
-                <>
-                  <p>{about.narrative}</p>
-                  {about.personalityNote && <p>{about.personalityNote}</p>}
-                </>
-              )}
-            </div>
+            <TypingNarrative paragraphs={narrativeParagraphs} />
 
 
 
