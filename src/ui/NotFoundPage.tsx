@@ -12,7 +12,7 @@ export default function NotFoundPage() {
     document.title = '404 — Page Not Found | Tobi XP'
     trackPageView('404 Not Found', '/404')
     return () => {
-      document.title = 'Tobi XP | Illustrator, Character Designer & Product Designer'
+      document.title = 'Tobi XP | Illustrator & Designer'
     }
   }, [])
 
