@@ -2,6 +2,7 @@ import React, { Suspense, useRef, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from 'framer-motion'
 import * as THREE from 'three'
+import { Analytics } from '@vercel/analytics/react'
 import Scene from './scene/Scene'
 import Resume from './ui/Resume'
 import EditorialStats from './ui/EditorialStats'
@@ -380,5 +381,10 @@ function PublicPortfolio() {
 }
 
 export default function App() {
-  return <PublicPortfolio />
+  return (
+    <>
+      <PublicPortfolio />
+      <Analytics />
+    </>
+  )
 }
