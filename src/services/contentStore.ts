@@ -319,7 +319,7 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
       },
       {
         id: 'res-2',
-        period: '2024 – 2026',
+        period: '2024 – Present',
         place: 'MIVA Learning Studio',
         role: 'Illustrator & Designer',
         points: ['Designer (Simulation Developer & Creative Builder)'],
