@@ -19,7 +19,7 @@
         {
           "name": "Paintings",
           "slug": "paintings",
-          "meta": "51 works",
+          "meta": "31 works",
           "tags": [
             "Procreate",
             "Photoshop"
@@ -43,36 +43,12 @@
               "title": "Finish3"
             },
             {
-              "image": "/images/works/Illustrations/Paintings/IMG_0053.webp",
-              "title": "IMG 0053"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_0061.webp",
-              "title": "IMG 0061"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_0073.webp",
-              "title": "IMG 0073"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_0518.webp",
-              "title": "IMG 0518"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_0901.webp",
-              "title": "IMG 0901"
-            },
-            {
               "image": "/images/works/Illustrations/Paintings/IMG_0928.webp",
               "title": "IMG 0928"
             },
             {
               "image": "/images/works/Illustrations/Paintings/IMG_1128.webp",
               "title": "IMG 1128"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_1152.webp",
-              "title": "IMG 1152"
             },
             {
               "image": "/images/works/Illustrations/Paintings/IMG_1532.webp",
@@ -87,48 +63,12 @@
               "title": "IMG 1547"
             },
             {
-              "image": "/images/works/Illustrations/Paintings/IMG_1597.webp",
-              "title": "IMG 1597"
-            },
-            {
               "image": "/images/works/Illustrations/Paintings/IMG_1635.webp",
               "title": "IMG 1635"
             },
             {
-              "image": "/images/works/Illustrations/Paintings/IMG_1637.webp",
-              "title": "IMG 1637"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_1676.webp",
-              "title": "IMG 1676"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_1679.webp",
-              "title": "IMG 1679"
-            },
-            {
               "image": "/images/works/Illustrations/Paintings/IMG_1913.webp",
               "title": "IMG 1913"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_1921.webp",
-              "title": "IMG 1921"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_2044.webp",
-              "title": "IMG 2044"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_2092.webp",
-              "title": "IMG 2092"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_2099.webp",
-              "title": "IMG 2099"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/IMG_2110.webp",
-              "title": "IMG 2110"
             },
             {
               "image": "/images/works/Illustrations/Paintings/IMG_2591.webp",
@@ -147,10 +87,6 @@
               "title": "IMG 2602"
             },
             {
-              "image": "/images/works/Illustrations/Paintings/IMG_3344.webp",
-              "title": "IMG 3344"
-            },
-            {
               "image": "/images/works/Illustrations/Paintings/SOLARA.webp",
               "title": "Solara"
             },
@@ -165,10 +101,6 @@
             {
               "image": "/images/works/Illustrations/Paintings/Untitled_Artwork(13).webp",
               "title": "Untitled Artwork(13)"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/Untitled_Artwork(18).webp",
-              "title": "Untitled Artwork(18)"
             },
             {
               "image": "/images/works/Illustrations/Paintings/Untitled_Artwork(4).webp",
@@ -203,14 +135,6 @@
               "title": "Untitled 22 Final"
             },
             {
-              "image": "/images/works/Illustrations/Paintings/Untitled-29.webp",
-              "title": "Untitled 29"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/Untitled-3.webp",
-              "title": "Untitled 3"
-            },
-            {
               "image": "/images/works/Illustrations/Paintings/Untitled-32.webp",
               "title": "Untitled 32"
             },
@@ -225,26 +149,18 @@
             {
               "image": "/images/works/Illustrations/Paintings/Untitled-37.webp",
               "title": "Untitled 37"
-            },
-            {
-              "image": "/images/works/Illustrations/Paintings/Untitled-7-j.webp",
-              "title": "Untitled 7 J"
             }
           ]
         },
         {
           "name": "Sketches",
           "slug": "sketches",
-          "meta": "87 works",
+          "meta": "77 works",
           "tags": [
             "Procreate"
           ],
           "link": "",
           "gallery": [
-            {
-              "image": "/images/works/Illustrations/Sketches/ABUJA.webp",
-              "title": "Abuja"
-            },
             {
               "image": "/images/works/Illustrations/Sketches/consumed.webp",
               "title": "Consumed"
@@ -254,12 +170,12 @@
               "title": "Expressionss2"
             },
             {
-              "image": "/images/works/Illustrations/Sketches/IMG_0007.webp",
-              "title": "IMG 0007"
+              "image": "/images/works/Illustrations/Sketches/finish.webp",
+              "title": "Finish"
             },
             {
-              "image": "/images/works/Illustrations/Sketches/IMG_0271.webp",
-              "title": "IMG 0271"
+              "image": "/images/works/Illustrations/Sketches/IMG_0007.webp",
+              "title": "IMG 0007"
             },
             {
               "image": "/images/works/Illustrations/Sketches/IMG_0610.webp",
@@ -358,10 +274,6 @@
               "title": "IMG 1445"
             },
             {
-              "image": "/images/works/Illustrations/Sketches/IMG_1447.webp",
-              "title": "IMG 1447"
-            },
-            {
               "image": "/images/works/Illustrations/Sketches/IMG_1454.webp",
               "title": "IMG 1454"
             },
@@ -442,20 +354,12 @@
               "title": "IMG 2600"
             },
             {
-              "image": "/images/works/Illustrations/Sketches/IMG_2807.webp",
-              "title": "IMG 2807"
-            },
-            {
               "image": "/images/works/Illustrations/Sketches/Levi.webp",
               "title": "Levi"
             },
             {
               "image": "/images/works/Illustrations/Sketches/lulu_finish.webp",
               "title": "Lulu Finish"
-            },
-            {
-              "image": "/images/works/Illustrations/Sketches/lulu.webp",
-              "title": "Lulu"
             },
             {
               "image": "/images/works/Illustrations/Sketches/SKETCH001.webp",
@@ -482,10 +386,6 @@
               "title": "Untitled Artwork(1)"
             },
             {
-              "image": "/images/works/Illustrations/Sketches/Untitled_Artwork(12).webp",
-              "title": "Untitled Artwork(12)"
-            },
-            {
               "image": "/images/works/Illustrations/Sketches/Untitled_Artwork(15).webp",
               "title": "Untitled Artwork(15)"
             },
@@ -500,10 +400,6 @@
             {
               "image": "/images/works/Illustrations/Sketches/Untitled-11.webp",
               "title": "Untitled 11"
-            },
-            {
-              "image": "/images/works/Illustrations/Sketches/Untitled-12 - Copy.webp",
-              "title": "Untitled 12 Copy"
             },
             {
               "image": "/images/works/Illustrations/Sketches/Untitled-12.webp",
@@ -526,10 +422,6 @@
               "title": "Untitled 16"
             },
             {
-              "image": "/images/works/Illustrations/Sketches/Untitled-18-sketch.webp",
-              "title": "Untitled 18 Sketch"
-            },
-            {
               "image": "/images/works/Illustrations/Sketches/Untitled-18.webp",
               "title": "Untitled 18"
             },
@@ -540,14 +432,6 @@
             {
               "image": "/images/works/Illustrations/Sketches/Untitled-24.webp",
               "title": "Untitled 24"
-            },
-            {
-              "image": "/images/works/Illustrations/Sketches/Untitled-25.webp",
-              "title": "Untitled 25"
-            },
-            {
-              "image": "/images/works/Illustrations/Sketches/Untitled-26-copy.webp",
-              "title": "Untitled 26 Copy"
             },
             {
               "image": "/images/works/Illustrations/Sketches/Untitled-28.webp",
@@ -564,10 +448,6 @@
             {
               "image": "/images/works/Illustrations/Sketches/Untitled-33.webp",
               "title": "Untitled 33"
-            },
-            {
-              "image": "/images/works/Illustrations/Sketches/Untitled-34-flat.webp",
-              "title": "Untitled 34 Flat"
             },
             {
               "image": "/images/works/Illustrations/Sketches/Untitled-34.webp",
@@ -680,11 +560,7 @@
         }
       ],
       "awards": [],
-      "tools": [
-        "Procreate",
-        "Photoshop",
-        "Illustrator"
-      ],
+      "tools": [],
       "footer": ""
     },
     {
@@ -692,17 +568,31 @@
       "no": "02",
       "title": "DESIGNS",
       "tagline": "TBXP",
-      "cover": "/works/covers/maker.jpg",
-      "items": [],
-      "isComingSoon": true,
-      "comingSoonMessage": "PATIENCE!\nSTILL WORKING ON THIS SECTION...",
-      "awards": [],
-      "tools": [
-        "Figma",
-        "Illustrator",
-        "Premiere Pro",
-        "After Effect"
+      "cover": "/images/works/Illustrations/designs.webp",
+      "items": [
+        {
+          "id": "maker-branding",
+          "name": "Branding & Identity",
+          "slug": "branding-identity",
+          "categoryId": "maker"
+        },
+        {
+          "id": "maker-product",
+          "name": "Product Design",
+          "slug": "product-design",
+          "categoryId": "maker"
+        },
+        {
+          "id": "maker-sturvs",
+          "name": "STURVS",
+          "slug": "sturvs",
+          "categoryId": "maker"
+        }
       ],
+      "isComingSoon": false,
+      "comingSoonMessage": "",
+      "awards": [],
+      "tools": [],
       "footer": ""
     }
   ]

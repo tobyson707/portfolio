@@ -62,13 +62,20 @@ function AboutCharacterFallback({ onInteract }: { onInteract?: () => void }) {
   return (
     <div className="about-fallback-container" onClick={onInteract}>
       <div className="about-fallback-stage">
-        <img
-          src="/images/about_character_fallback.jpg"
-          alt="TOBI XP 3D Mask Sculpture"
-          className="about-fallback-img"
-          loading="eager"
-          draggable={false}
-        />
+        <div className="about-fallback-sculpture-wrap" aria-label="TOBI XP 3D Mask Sculpture">
+          <svg
+            viewBox="0 0 200 200"
+            className="about-fallback-img"
+            style={{ width: '100%', height: '100%', maxWidth: '280px', maxHeight: '280px', display: 'block', margin: 'auto' }}
+            fill="none"
+          >
+            <circle cx="100" cy="100" r="72" stroke="currentColor" strokeOpacity="0.12" strokeWidth="1" strokeDasharray="4 4" />
+            <polygon points="100,38 162,74 162,146 100,182 38,146 38,74" stroke="currentColor" strokeOpacity="0.3" strokeWidth="1.5" fill="none" />
+            <polygon points="100,56 146,84 146,138 100,166 54,138 54,84" stroke="#F15723" strokeWidth="2" fill="rgba(241,87,35,0.06)" />
+            <circle cx="100" cy="110" r="18" fill="rgba(241,87,35,0.2)" stroke="#F15723" strokeWidth="1.5" />
+            <circle cx="100" cy="110" r="6" fill="#F15723" />
+          </svg>
+        </div>
         <div className="about-fallback-shadow" aria-hidden="true" />
       </div>
       <div className="about-fallback-badge">
@@ -411,9 +418,9 @@ export default function AboutPage({ onClose }: AboutPageProps) {
     return fallback.length > 0
       ? fallback
       : [
-          'I’m Tobi XP, an illustrator and designer who enjoys turning ideas into things people can see, use, and interact with ;)',
-          'From illustration and character design to product design and interactive experiences, I like exploring ideas, figuring things out, and seeing where they lead.',
-          'Still learning, still experimenting, and always making something.',
+          'I’m Tobi XP, an illustrator and designer who turns ideas into things people can see, use, and interact with.',
+          'From illustration to product design, I like exploring ideas, figuring things out, and seeing where they lead.',
+          'Still learning. Still experimenting. Always making.',
         ]
   }, [about])
 

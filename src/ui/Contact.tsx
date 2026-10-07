@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent, type MouseEvent } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
-import { Mail, ExternalLink, ArrowUpRight } from 'lucide-react'
+import { Mail, Copy, Check } from 'lucide-react'
 import type { SITE_CONTENT } from '../data/siteContent'
 import { InstagramIcon } from './SocialIcons'
 import { useContentStore } from '../services/contentStore'
@@ -8,225 +7,309 @@ import { trackContactInteraction, trackSocialClick } from '../services/analytics
 
 type ContactContent = typeof SITE_CONTENT.contact
 
-export default function Contact({ content }: { content: ContactContent }) {
-  const [status, setStatus] = useState('')
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    message: '',
-  })
-  const social = useContentStore((s) => s.site.social)
-  const contactEmail = (
-    import.meta.env.VITE_CONTACT_EMAIL ||
-    content.recipientEmail ||
-    social?.email ||
-    'businesstobixp@gmail.com'
-  ).trim()
+export default function Contact({ content: _content }: { content?: ContactContent }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [message, setMessage] = useState('')
+  const [formStatus, setFormStatus] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  const instagramUrl = social?.instagram || 'https://instagram.com/tobi.xp/'
-  const rawHandle = instagramUrl.includes('instagram.com')
-    ? (instagramUrl.replace(/\/+$/, '').split('/').pop() || 'tobi.xp')
-    : instagramUrl.replace(/^@/, '')
-  const instagramHandle = `@${rawHandle}`
-
-  const shouldReduceMotion = useReducedMotion()
+  // Interactive 3D Parallax & Bounce for XP graphic
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, tx: 0, ty: 0, scale: 1 })
+  const [isPressed, setIsPressed] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
   const logoRef = useRef<HTMLDivElement>(null)
-  const [logoTransform, setLogoTransform] = useState({ x: 0, y: 0, scale: 1, rotate: 0 })
 
   useEffect(() => {
-    trackContactInteraction('view')
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+      setReducedMotion(mq.matches)
+      const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+      mq.addEventListener('change', handler)
+      return () => mq.removeEventListener('change', handler)
+    }
   }, [])
 
-  function handleLogoMouseMove(e: MouseEvent<HTMLDivElement>) {
-    if (shouldReduceMotion || window.innerWidth < 768) return
-    const el = logoRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left - rect.width / 2
-    const y = e.clientY - rect.top - rect.height / 2
-    const moveX = (x / (rect.width / 2)) * 10
-    const moveY = (y / (rect.height / 2)) * 10
-    const rotateZ = (x / (rect.width / 2)) * 1.5
-
-    setLogoTransform({
-      x: moveX,
-      y: moveY,
-      scale: 1.03,
-      rotate: rotateZ,
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (reducedMotion || !logoRef.current) return
+    const rect = logoRef.current.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / rect.width - 0.5 // -0.5 to 0.5
+    const y = (e.clientY - rect.top) / rect.height - 0.5 // -0.5 to 0.5
+    setTilt({
+      rx: -y * 12, // subtle tilt X (max ±6deg)
+      ry: x * 14,  // subtle tilt Y (max ±7deg)
+      tx: x * 8,   // subtle parallax X (max ±4px)
+      ty: y * 8,   // subtle parallax Y (max ±4px)
+      scale: 1.025,
     })
   }
 
-  function handleLogoMouseLeave() {
-    setLogoTransform({ x: 0, y: 0, scale: 1, rotate: 0 })
+  const handleMouseLeave = () => {
+    setTilt({ rx: 0, ry: 0, tx: 0, ty: 0, scale: 1 })
+    setIsPressed(false)
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    trackContactInteraction('form_submit')
+  const handlePointerDown = () => {
+    if (reducedMotion) return
+    setIsPressed(true)
+  }
 
-    if (!contactEmail) {
-      setStatus('The contact inbox has not been configured yet.')
+  const handlePointerUp = () => {
+    setIsPressed(false)
+  }
+
+  const social = useContentStore((s) => s.site.social)
+  const contactEmail = 'businesstobixp@gmail.com'
+
+  const instagramUrl = social?.instagram || 'https://www.instagram.com/tobi.xp/'
+  const instagramHandle = '@tobi.xp'
+
+  async function handleCopyEmail() {
+    if (!contactEmail) return
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(contactEmail)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = contactEmail
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
+      setCopied(true)
+      trackContactInteraction('email_click')
+      setTimeout(() => setCopied(false), 2400)
+    } catch {
+      window.location.href = `mailto:${contactEmail}`
+    }
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      setFormStatus('Please fill in all fields.')
       return
     }
 
-    const name = formData.name.trim()
-    const email = formData.email.trim()
-    const message = formData.message.trim()
+    setIsSubmitting(true)
+    trackContactInteraction('submit')
 
-    if (!name || !email || !message) {
-      setStatus('Please fill in all fields before sending.')
-      return
-    }
-
-    const subject = encodeURIComponent(`Portfolio message from ${name}`)
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`)
+    const subject = encodeURIComponent(`Project Inquiry — ${name.trim()}`)
+    const body = encodeURIComponent(
+      `Hi Tobi,\n\n${message.trim()}\n\nBest,\n${name.trim()}\n${email.trim()}`
+    )
     window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`
-    setStatus('Your email app should open with your message ready to send.')
+
+    setTimeout(() => {
+      setIsSubmitting(false)
+      setFormStatus('Opening your email client...')
+    }, 400)
   }
 
   return (
     <section className="wk-contact-panel" id="contact" aria-label="Contact">
-      {/* Huge Editorial Background Text: LET'S TALK */}
+      {/* Background Oversized Subtle Grey Typography: LET'S TALK */}
       <div className="wk-contact-bg-talk" aria-hidden="true">
         <span>LET&apos;S TALK</span>
       </div>
 
-      {/* Continuously Scrolling Marquee Layer: LET'S COOK SOMETHING */}
-      <div className="wk-contact-marquee" aria-hidden="true">
-        <div className="wk-contact-marquee-track">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <span key={idx} className="wk-contact-marquee-text">
-              LET&apos;S COOK SOMETHING &middot; LET&apos;S COOK SOMETHING &middot;&nbsp;
-            </span>
-          ))}
-        </div>
-      </div>
-
+      {/* Main Two-Sided Foreground Content Grid */}
       <div className="wk-contact-inner">
-        {/* Left Column: Large XP Logo with subtle interactive hover reaction */}
+        {/* Left Side — Interactive XP Graphic */}
         <div className="wk-contact-left">
           <div
             ref={logoRef}
             className="wk-contact-logo-wrap"
-            onMouseMove={handleLogoMouseMove}
-            onMouseLeave={handleLogoMouseLeave}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            role="presentation"
+            aria-label="TOBI XP Logo"
+            style={{
+              transform: reducedMotion
+                ? 'none'
+                : `perspective(900px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translate3d(${tilt.tx}px, ${tilt.ty}px, 0) scale(${isPressed ? 0.96 : tilt.scale})`,
+              transition: isPressed
+                ? 'transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                : tilt.scale === 1
+                ? 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                : 'transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)',
+              transformStyle: 'preserve-3d',
+            }}
           >
-            <motion.div
-              className="wk-contact-logo-inner"
-              animate={{
-                x: logoTransform.x,
-                y: logoTransform.y,
-                scale: logoTransform.scale,
-                rotate: logoTransform.rotate,
-              }}
-              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-            >
-              <img
-                src="/images/xp.png"
-                alt="TOBI XP Logo"
-                className="wk-contact-xp-img"
-              />
-            </motion.div>
+            <img
+              src="/images/xp.png"
+              alt="TOBI XP"
+              className="wk-contact-xp-img"
+              draggable={false}
+            />
           </div>
         </div>
 
-        {/* Right Column: Minimal Editorial Contact Form */}
+        {/* Right Side — Minimalist Contact Form & Contact Details Below */}
         <div className="wk-contact-right">
           <div className="wk-contact-form-container">
-            <form
-              className="wk-editorial-form"
-              onSubmit={handleSubmit}
-              onFocus={() => trackContactInteraction('form_start')}
-            >
+            <form className="wk-editorial-form" onSubmit={handleSubmit} noValidate={false}>
               <div className="wk-form-row-dual">
                 <div className="wk-form-field">
-                  <label htmlFor="contact-name" className="wk-form-label">NAME</label>
+                  <label htmlFor="contact-name" className="wk-form-label">
+                    NAME
+                  </label>
                   <input
                     id="contact-name"
-                    name="name"
                     type="text"
-                    autoComplete="name"
-                    spellCheck={false}
-                    value={formData.name}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                    name="name"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      if (formStatus) setFormStatus(null)
+                    }}
                     placeholder="What should I call you?"
-                    required
                     className="wk-form-input"
+                    autoComplete="name"
+                    required
                   />
                 </div>
+
                 <div className="wk-form-field">
-                  <label htmlFor="contact-email" className="wk-form-label">EMAIL</label>
+                  <label htmlFor="contact-email" className="wk-form-label">
+                    EMAIL
+                  </label>
                   <input
                     id="contact-email"
-                    name="email"
                     type="email"
-                    autoComplete="email"
-                    spellCheck={false}
-                    value={formData.email}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    name="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (formStatus) setFormStatus(null)
+                    }}
                     placeholder="Where can I reach you?"
-                    required
                     className="wk-form-input"
+                    autoComplete="email"
+                    required
                   />
                 </div>
               </div>
 
-              <div className="wk-form-field wk-form-field-message">
-                <label htmlFor="contact-message" className="wk-form-label">MESSAGE</label>
+              <div className="wk-form-field">
+                <label htmlFor="contact-message" className="wk-form-label">
+                  MESSAGE
+                </label>
                 <textarea
                   id="contact-message"
                   name="message"
-                  rows={3}
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={formData.message}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value)
+                    if (formStatus) setFormStatus(null)
+                  }}
                   placeholder="So... what are we cooking?"
-                  required
                   className="wk-form-textarea"
+                  rows={3}
+                  required
                 />
               </div>
 
               <div className="wk-form-actions-row">
-                <button className="wk-editorial-submit-btn" type="submit">
+                <button
+                  type="submit"
+                  className="wk-editorial-submit-btn"
+                  disabled={isSubmitting}
+                  aria-label="Send Message"
+                >
                   <span>SEND MESSAGE</span>
-                  <ArrowUpRight size={16} aria-hidden="true" />
+                  <span className="wk-submit-arrow" aria-hidden="true">
+                    &#8599;
+                  </span>
                 </button>
-                {status && (
-                  <p className="wk-form-status-msg" aria-live="polite">
-                    {status}
-                  </p>
+
+                {formStatus && (
+                  <span className="wk-form-status-msg" role="status">
+                    {formStatus}
+                  </span>
                 )}
               </div>
             </form>
 
-            {/* Understated direct contact links */}
-            <div className="wk-contact-direct-links">
-              <a
-                href={`mailto:${contactEmail}`}
-                className="wk-direct-link"
-                onClick={() => trackContactInteraction('email_click')}
-              >
-                <Mail size={14} aria-hidden="true" />
-                <span>{contactEmail}</span>
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
-              <span className="wk-direct-sep" aria-hidden="true">&middot;</span>
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="wk-direct-link"
-                onClick={() => {
-                  trackContactInteraction('social_click')
-                  trackSocialClick('instagram')
-                }}
-              >
-                <InstagramIcon className="wk-direct-social-icon" />
-                <span>{instagramHandle}</span>
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
+            {/* Contact Details — Directly below the contact form, aligned with left edge */}
+            <div className="wk-contact-channels">
+              {/* Email Option */}
+              <div className="wk-contact-channel">
+                <span className="wk-contact-channel-label">EMAIL</span>
+                <div className="wk-contact-channel-action">
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="wk-contact-channel-link"
+                    onClick={() => trackContactInteraction('email_click')}
+                    aria-label={`Send email to ${contactEmail}`}
+                  >
+                    <Mail size={16} className="wk-contact-channel-icon" aria-hidden="true" />
+                    <span className="wk-contact-channel-val">{contactEmail}</span>
+                  </a>
+                  <button
+                    type="button"
+                    className={`wk-copy-btn ${copied ? 'is-copied' : ''}`}
+                    onClick={handleCopyEmail}
+                    aria-label={copied ? 'Copied to clipboard' : 'Copy email address'}
+                    title={copied ? 'Copied!' : 'Copy email'}
+                  >
+                    {copied ? (
+                      <Check size={13} className="text-emerald-500" aria-hidden="true" />
+                    ) : (
+                      <Copy size={13} aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Instagram Option */}
+              <div className="wk-contact-channel">
+                <span className="wk-contact-channel-label">INSTAGRAM</span>
+                <div className="wk-contact-channel-action">
+                  <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="wk-contact-channel-link"
+                    onClick={() => {
+                      trackContactInteraction('social_click')
+                      trackSocialClick('instagram')
+                    }}
+                    aria-label={`Visit Instagram ${instagramHandle}`}
+                  >
+                    <InstagramIcon className="wk-contact-channel-icon" aria-hidden="true" />
+                    <span className="wk-contact-channel-val">{instagramHandle}</span>
+                  </a>
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Continuously Scrolling Bottom Marquee: LET'S COOK SOMETHING */}
+      <div className="wk-contact-marquee" aria-hidden="true">
+        <div className="wk-contact-marquee-track">
+          <div className="wk-contact-marquee-group">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <span key={`g1-${idx}`} className="wk-contact-marquee-text">
+                LET&apos;S COOK SOMETHING <span className="wk-contact-marquee-dot">&middot;</span>&nbsp;
+              </span>
+            ))}
+          </div>
+          <div className="wk-contact-marquee-group" aria-hidden="true">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <span key={`g2-${idx}`} className="wk-contact-marquee-text">
+                LET&apos;S COOK SOMETHING <span className="wk-contact-marquee-dot">&middot;</span>&nbsp;
+              </span>
+            ))}
           </div>
         </div>
       </div>

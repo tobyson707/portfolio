@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { useEffect, useRef, useState, useCallback, type Ref } from 'react'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { WORKS, assetUrl, type WorkListItem, type WorkSection, type WorksLang } from '../data/works'
 import {
@@ -10,62 +10,33 @@ import {
 } from '../data/worksManifest'
 import ImageViewer from './ImageViewer'
 import Contact from './Contact'
+import BrandingGallery from './BrandingGallery'
+import ProductDesignView from './ProductDesignView'
+import SturvsCanvas from './SturvsCanvas'
+import { CategoryList, CategoryRow, FloatingCategoryCard } from './CategoryList'
+import {
+  type CategoryPersonality,
+  getCategoryPersonality,
+} from '../data/categoryPersonality'
 import { SITE_CONTENT } from '../data/siteContent'
 import { scrollToContact, scrollToWorks } from '../utils/scroll'
 import { useContentStore } from '../services/contentStore'
 import { trackWorkView } from '../services/analytics'
+import { useStore } from '../store'
 
 const EASE = [0.22, 1, 0.36, 1]
-
-// 极简清单的一行：作品名靠左、数据(播放量/标签)靠右、发丝线分隔；整行可点开全屏详情
-function WorkLine({
-  item,
-  isIllustration,
-  onOpen,
-}: {
-  item: WorkListItem
-  isIllustration?: boolean
-  onOpen: (item: WorkListItem) => void
-}) {
-  const isIllustrationItem =
-    isIllustration ||
-    item.categoryId === 'ad' ||
-    ['paintings', 'sketches', 'studies', 'illustrations', 'all illustrations'].includes(
-      (item.slug || item.name || '').toLowerCase().trim()
-    )
-
-  const tags = isIllustrationItem ? [] : item.tags
-  const meta = isIllustrationItem ? undefined : item.meta
-  const hasMeta = Boolean(meta || (tags && tags.length > 0))
-  return (
-    <li className="wk-line">
-      <button className="wk-line-btn" onClick={() => onOpen(item)}>
-        <span className="wk-line-name">{item.name}</span>
-        {hasMeta && (
-          <span className="wk-line-meta">
-            {meta && <span className="wk-line-num">{meta}</span>}
-            {tags &&
-              tags.map((t, i) => (
-                <span key={i} className="wk-line-tag">
-                  {t}
-                </span>
-              ))}
-          </span>
-        )}
-      </button>
-    </li>
-  )
-}
 
 // 一张全高板块卡：左侧分类信息，右侧配图，下方紧跟作品清单
 function SectionCard({
   section,
   data,
   onOpen,
+  onHoverItem,
 }: {
   section: WorkSection
   data: WorksLang
   onOpen: (item: WorkListItem) => void
+  onHoverItem: (item: WorkListItem | null) => void
 }) {
   const isIllustrations =
     section.id === 'ad' ||
@@ -80,6 +51,8 @@ function SectionCard({
   const [coverError, setCoverError] = useState(false)
   const cover = isIllustrations
     ? '/images/works/Illustrations/Illustrations.webp'
+    : isDesigns
+    ? '/images/works/Illustrations/designs.webp'
     : section.cover
     ? assetUrl(section.cover)
     : undefined
@@ -142,7 +115,12 @@ function SectionCard({
           )}
         </div>
       </div>
-      <SectionWorks section={section} data={data} onOpen={onOpen} />
+      <SectionWorks
+        section={section}
+        data={data}
+        onOpen={onOpen}
+        onHoverItem={onHoverItem}
+      />
     </div>
   )
 }
@@ -152,17 +130,19 @@ function SectionWorks({
   section,
   data,
   onOpen,
+  onHoverItem,
 }: {
   section: WorkSection
   data: WorksLang
   onOpen: (item: WorkListItem) => void
+  onHoverItem: (item: WorkListItem | null) => void
 }) {
   const isComingSoon = section.isComingSoon || (!section.items?.length && !section.groups?.length)
-  const isDesigns = section.id === 'maker' || (section.title ? section.title.toUpperCase().includes('DESIGN') : false)
   const isIllustrations =
     section.id === 'ad' ||
     section.no === '01' ||
     (section.title ? section.title.toUpperCase().includes('ILLUSTRATION') : false)
+  const isDesigns = section.id === 'maker' || (section.title ? section.title.toUpperCase().includes('DESIGN') : false)
 
   if (isComingSoon || (isDesigns && (!section.items || section.items.length === 0))) {
     const rawMsg = section.comingSoonMessage || 'PATIENCE!\nSTILL WORKING ON THIS SECTION...'
@@ -180,29 +160,24 @@ function SectionWorks({
   return (
     <div className="wk-card-body">
       {section.items && (
-        <ul className="wk-list">
-          {section.items.map((it, i) => (
-            <WorkLine
-              key={it.id || it.slug || i}
-              item={it}
-              isIllustration={isIllustrations}
-              onOpen={onOpen}
-            />
-          ))}
-        </ul>
+        <CategoryList
+          items={section.items}
+          onOpen={onOpen}
+          onHover={onHoverItem}
+        />
       )}
 
       {section.groups &&
         section.groups.map((g, gi) => (
           <div key={gi} className="wk-sub">
             <div className="wk-sub-head">{g.heading}</div>
-            <ul className="wk-list">
+            <ul className="wk-cat-list" role="list">
               {g.items.map((it, i) => (
-                <WorkLine
+                <CategoryRow
                   key={i}
                   item={{ name: it }}
-                  isIllustration={isIllustrations}
                   onOpen={onOpen}
+                  onHover={onHoverItem}
                 />
               ))}
             </ul>
@@ -210,7 +185,7 @@ function SectionWorks({
         ))}
 
       {((section.awards?.length ?? 0) > 0 ||
-        (section.tools?.length ?? 0) > 0 ||
+        (!isIllustrations && (section.tools?.length ?? 0) > 0) ||
         Boolean(section.footer)) && (
         <div className="wk-foot">
           {section.awards && section.awards.length > 0 && (
@@ -219,7 +194,7 @@ function SectionWorks({
               <span className="wk-foot-val accent">{section.awards.join('  ·  ')}</span>
             </p>
           )}
-          {section.tools && section.tools.length > 0 && (
+          {!isIllustrations && section.tools && section.tools.length > 0 && (
             <p className="wk-foot-line">
               <span className="wk-foot-label">TOOLS</span>
               <span className="wk-foot-val accent">{section.tools.join('  ·  ')}</span>
@@ -267,6 +242,16 @@ function WorkDetail({
   })()
 
   const [activeCategory, setActiveCategory] = useState<string>(initialCat)
+
+  useEffect(() => {
+    const catName =
+      activeCategory === 'sketches'
+        ? 'SKETCHES'
+        : activeCategory === 'studies'
+        ? 'STUDIES'
+        : 'PAINTINGS'
+    useStore.getState().setSelectedCategory(catName)
+  }, [activeCategory])
 
   const CATEGORY_TABS = [
     { id: 'all', label: 'All', count: allIllustrationImages.length },
@@ -416,6 +401,48 @@ function WorkDetail({
   )
 }
 
+function getCategoryNameFromItem(item: WorkListItem | null): string | null {
+  if (!item) return null
+  const slug = (item.slug || '').toLowerCase().trim()
+  const name = (item.name || '').trim()
+  const id = ((item as any).id || '').toLowerCase().trim()
+
+  if (slug === 'paintings' || name.toLowerCase() === 'paintings' || (item as any).workGroupId === 'wg-paint') {
+    return 'PAINTINGS'
+  }
+  if (slug === 'sketches' || name.toLowerCase() === 'sketches' || (item as any).workGroupId === 'wg-sketch') {
+    return 'SKETCHES'
+  }
+  if (slug === 'studies' || name.toLowerCase() === 'studies' || (item as any).workGroupId === 'wg-studies') {
+    return 'STUDIES'
+  }
+  if (
+    slug === 'branding-identity' ||
+    id === 'maker-branding' ||
+    name.toLowerCase().includes('branding')
+  ) {
+    return 'BRANDING & IDENTITY'
+  }
+  if (
+    slug === 'product-design' ||
+    id === 'maker-product' ||
+    name.toLowerCase().includes('product')
+  ) {
+    return 'PRODUCT DESIGN'
+  }
+  if (
+    slug === 'sturvs' ||
+    id === 'maker-sturvs' ||
+    name.toLowerCase().includes('sturvs')
+  ) {
+    return 'STURVS'
+  }
+  if (slug === 'all' || name.toLowerCase().includes('illustration')) {
+    return 'PAINTINGS'
+  }
+  return name.toUpperCase()
+}
+
 export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HTMLElement> }) {
   const data = WORKS[lang]
   const dynamicSections = useContentStore((s) => s.getPublicSections())
@@ -492,9 +519,18 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
   // WORKS title fades out progressively as user scrolls toward Contact
   const worksTitleOpacity = useTransform(scrollYProgress, [0.75, 0.96], [1, 0])
 
-  // 详情打开时锁滚动 + ESC 关闭
+  // 详情打开时锁滚动 + ESC 关闭 + 隐藏全局浮动控件 (如 Back to Top 和 Navigation Menu) + 音频分类环境联动
   useEffect(() => {
-    if (!active) return
+    useStore.getState().setIsModalOpen(Boolean(active))
+
+    if (!active) {
+      useStore.getState().setSelectedCategory(null)
+      return
+    }
+
+    const catName = getCategoryNameFromItem(active)
+    useStore.getState().setSelectedCategory(catName)
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       // If ImageViewer is active, let it close first without closing category
@@ -507,10 +543,26 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
     return () => {
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
+      useStore.getState().setIsModalOpen(false)
+      useStore.getState().setSelectedCategory(null)
     }
   }, [active])
 
+  const isModalOpen = useStore((s) => s.isModalOpen)
+
+  // One shared cursor personality state for category row hovers
+  const [activePersonality, setActivePersonality] = useState<CategoryPersonality | null>(null)
+  const leaveTimerRef = useRef<number | null>(null)
+
+  // Ensure cursor card is immediately cleared when detail modal opens
+  useEffect(() => {
+    if (active || isModalOpen) {
+      setActivePersonality(null)
+    }
+  }, [active, isModalOpen])
+
   const openDetail = (item: WorkListItem) => {
+    setActivePersonality(null)
     setActive(item)
     trackWorkView({
       workId: (item as any).id || (item.slug ? item.slug : item.name.toLowerCase().replace(/\s+/g, '-')),
@@ -524,8 +576,51 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
     setActive(null)
   }
 
+  const handleHoverItem = useCallback((item: WorkListItem | null) => {
+    if (leaveTimerRef.current) {
+      window.clearTimeout(leaveTimerRef.current)
+      leaveTimerRef.current = null
+    }
+
+    if (active || isModalOpen) {
+      setActivePersonality(null)
+      return
+    }
+
+    if (item) {
+      const personality = getCategoryPersonality(item)
+      setActivePersonality(personality)
+    } else {
+      // Brief debounce so moving between adjacent category rows is seamless
+      leaveTimerRef.current = window.setTimeout(() => {
+        setActivePersonality(null)
+      }, 50)
+    }
+  }, [active, isModalOpen])
+
+  const isBranding =
+    active &&
+    (active.slug === 'branding-identity' ||
+      active.id === 'maker-branding' ||
+      active.name?.toLowerCase().includes('branding'))
+
+  const isProductDesign =
+    active &&
+    (active.slug === 'product-design' ||
+      active.id === 'maker-product' ||
+      active.name?.toLowerCase().includes('product'))
+
+  const isSturvs =
+    active &&
+    (active.slug === 'sturvs' ||
+      active.id === 'maker-sturvs' ||
+      active.name?.toLowerCase().includes('sturvs'))
+
   return (
     <section className="works" id="works" lang={lang} ref={innerRef}>
+      {/* One shared cursor-following personality card rendered via body portal */}
+      {!active && !isModalOpen && <FloatingCategoryCard personality={activePersonality} />}
+
       <div
         className="wk-gallery"
         ref={galleryRef}
@@ -536,7 +631,13 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
 
           <motion.div className="wk-track" ref={trackRef} style={{ x }}>
             {sections.map((s) => (
-              <SectionCard key={s.id} section={s} data={resolvedData} onOpen={openDetail} />
+              <SectionCard
+                key={s.id}
+                section={s}
+                data={resolvedData}
+                onOpen={openDetail}
+                onHoverItem={handleHoverItem}
+              />
             ))}
             <Contact content={{ ...SITE_CONTENT.contact, ...siteContent.contact }} />
           </motion.div>
@@ -551,7 +652,12 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
       </div>
 
       <AnimatePresence>
-        {active && (
+        {active && isBranding && <BrandingGallery key="branding-gallery" onClose={closeDetail} />}
+        {active && isProductDesign && (
+          <ProductDesignView key="product-design-view" onClose={closeDetail} />
+        )}
+        {active && isSturvs && <SturvsCanvas key="sturvs-canvas" onClose={closeDetail} />}
+        {active && !isBranding && !isProductDesign && !isSturvs && (
           <WorkDetail
             key={active.slug || active.name}
             item={active}

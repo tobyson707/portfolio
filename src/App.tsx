@@ -13,10 +13,12 @@ import NavigationMenu from './ui/NavigationMenu'
 import AboutPage from './ui/AboutPage'
 import NotFoundPage from './ui/NotFoundPage'
 import ThemeToggle from './ui/ThemeToggle'
+import BackToTop from './ui/BackToTop'
 import { useStore } from './store'
 import { SITE_CONTENT } from './data/siteContent'
 import { scrollToWorks } from './utils/scroll'
 import { useContentStore } from './services/contentStore'
+import { useAudioEngineEffects } from './hooks/useAudioEngineEffects'
 import {
   initAnalytics,
   trackPageView,
@@ -306,6 +308,8 @@ function HomeView() {
 }
 
 function PublicPortfolio() {
+  useAudioEngineEffects()
+
   const currentView = useStore((s) => s.currentView)
   const isAboutOpen = useStore((s) => s.isAboutOpen)
   const setIsAboutOpen = useStore((s) => s.setIsAboutOpen)
@@ -458,7 +462,10 @@ function PublicPortfolio() {
       {/* 顶部右侧常驻电影感导航菜单 (Navigation Menu) — ONLY rendered on homepage, completely excluded/unmounted on /about */}
       {currentView === 'home' && !isAboutOpen && <NavigationMenu />}
 
-      {/* 底部右侧常驻声音控制 (Sound Control) */}
+      {/* 底部左侧常驻返回顶部 (Back to Top Button) */}
+      <BackToTop />
+
+      {/* 底部右侧常驻全局控制 (Global Controls: Theme, Sound) */}
       <div className="global-controls">
         <ThemeToggle />
         <SoundControl />

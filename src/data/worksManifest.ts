@@ -72,46 +72,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 2100
     },
     {
-      "id": "paintings-img-0053-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_0053.webp",
-      "title": "IMG 0053",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-0061-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_0061.webp",
-      "title": "IMG 0061",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-0073-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_0073.webp",
-      "title": "IMG 0073",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-0518-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_0518.webp",
-      "title": "IMG 0518",
-      "category": "Paintings",
-      "width": 1537,
-      "height": 1537
-    },
-    {
-      "id": "paintings-img-0901-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_0901.webp",
-      "title": "IMG 0901",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
       "id": "paintings-img-0928-webp",
       "src": "/images/works/Illustrations/Paintings/IMG_0928.webp",
       "title": "IMG 0928",
@@ -126,14 +86,6 @@ export const illustrationGallery: IllustrationGallery = {
       "category": "Paintings",
       "width": 1615,
       "height": 1615
-    },
-    {
-      "id": "paintings-img-1152-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_1152.webp",
-      "title": "IMG 1152",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
     },
     {
       "id": "paintings-img-1532-webp",
@@ -160,14 +112,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 2500
     },
     {
-      "id": "paintings-img-1597-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_1597.webp",
-      "title": "IMG 1597",
-      "category": "Paintings",
-      "width": 2500,
-      "height": 2500
-    },
-    {
       "id": "paintings-img-1635-webp",
       "src": "/images/works/Illustrations/Paintings/IMG_1635.webp",
       "title": "IMG 1635",
@@ -176,76 +120,12 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 1062
     },
     {
-      "id": "paintings-img-1637-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_1637.webp",
-      "title": "IMG 1637",
-      "category": "Paintings",
-      "width": 2500,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-1676-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_1676.webp",
-      "title": "IMG 1676",
-      "category": "Paintings",
-      "width": 890,
-      "height": 890
-    },
-    {
-      "id": "paintings-img-1679-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_1679.webp",
-      "title": "IMG 1679",
-      "category": "Paintings",
-      "width": 2500,
-      "height": 2500
-    },
-    {
       "id": "paintings-img-1913-webp",
       "src": "/images/works/Illustrations/Paintings/IMG_1913.webp",
       "title": "IMG 1913",
       "category": "Paintings",
       "width": 1649,
       "height": 1649
-    },
-    {
-      "id": "paintings-img-1921-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_1921.webp",
-      "title": "IMG 1921",
-      "category": "Paintings",
-      "width": 3544,
-      "height": 3544
-    },
-    {
-      "id": "paintings-img-2044-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_2044.webp",
-      "title": "IMG 2044",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-2092-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_2092.webp",
-      "title": "IMG 2092",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-2099-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_2099.webp",
-      "title": "IMG 2099",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "paintings-img-2110-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_2110.webp",
-      "title": "IMG 2110",
-      "category": "Paintings",
-      "width": 3000,
-      "height": 3571
     },
     {
       "id": "paintings-img-2591-webp",
@@ -280,14 +160,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 1586
     },
     {
-      "id": "paintings-img-3344-webp",
-      "src": "/images/works/Illustrations/Paintings/IMG_3344.webp",
-      "title": "IMG 3344",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2500
-    },
-    {
       "id": "paintings-solara-webp",
       "src": "/images/works/Illustrations/Paintings/SOLARA.webp",
       "title": "Solara",
@@ -318,14 +190,6 @@ export const illustrationGallery: IllustrationGallery = {
       "category": "Paintings",
       "width": 1380,
       "height": 1642
-    },
-    {
-      "id": "paintings-untitled-artwork-18--webp",
-      "src": "/images/works/Illustrations/Paintings/Untitled_Artwork(18).webp",
-      "title": "Untitled Artwork(18)",
-      "category": "Paintings",
-      "width": 2666,
-      "height": 2666
     },
     {
       "id": "paintings-untitled-artwork-4--webp",
@@ -392,22 +256,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 2802
     },
     {
-      "id": "paintings-untitled-29-webp",
-      "src": "/images/works/Illustrations/Paintings/Untitled-29.webp",
-      "title": "Untitled 29",
-      "category": "Paintings",
-      "width": 1044,
-      "height": 1242
-    },
-    {
-      "id": "paintings-untitled-3-webp",
-      "src": "/images/works/Illustrations/Paintings/Untitled-3.webp",
-      "title": "Untitled 3",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2100
-    },
-    {
       "id": "paintings-untitled-32-webp",
       "src": "/images/works/Illustrations/Paintings/Untitled-32.webp",
       "title": "Untitled 32",
@@ -438,25 +286,9 @@ export const illustrationGallery: IllustrationGallery = {
       "category": "Paintings",
       "width": 1073,
       "height": 1278
-    },
-    {
-      "id": "paintings-untitled-7-j-webp",
-      "src": "/images/works/Illustrations/Paintings/Untitled-7-j.webp",
-      "title": "Untitled 7 J",
-      "category": "Paintings",
-      "width": 2100,
-      "height": 2100
     }
   ],
   "sketches": [
-    {
-      "id": "sketches-abuja-webp",
-      "src": "/images/works/Illustrations/Sketches/ABUJA.webp",
-      "title": "Abuja",
-      "category": "Sketches",
-      "width": 1054,
-      "height": 1054
-    },
     {
       "id": "sketches-consumed-webp",
       "src": "/images/works/Illustrations/Sketches/consumed.webp",
@@ -474,19 +306,19 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 2000
     },
     {
+      "id": "sketches-finish-webp",
+      "src": "/images/works/Illustrations/Sketches/finish.webp",
+      "title": "Finish",
+      "category": "Sketches",
+      "width": 3000,
+      "height": 3000
+    },
+    {
       "id": "sketches-img-0007-webp",
       "src": "/images/works/Illustrations/Sketches/IMG_0007.webp",
       "title": "IMG 0007",
       "category": "Sketches",
       "width": 2500,
-      "height": 2500
-    },
-    {
-      "id": "sketches-img-0271-webp",
-      "src": "/images/works/Illustrations/Sketches/IMG_0271.webp",
-      "title": "IMG 0271",
-      "category": "Sketches",
-      "width": 2100,
       "height": 2500
     },
     {
@@ -682,14 +514,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 1065
     },
     {
-      "id": "sketches-img-1447-webp",
-      "src": "/images/works/Illustrations/Sketches/IMG_1447.webp",
-      "title": "IMG 1447",
-      "category": "Sketches",
-      "width": 930,
-      "height": 930
-    },
-    {
       "id": "sketches-img-1454-webp",
       "src": "/images/works/Illustrations/Sketches/IMG_1454.webp",
       "title": "IMG 1454",
@@ -850,14 +674,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 1195
     },
     {
-      "id": "sketches-img-2807-webp",
-      "src": "/images/works/Illustrations/Sketches/IMG_2807.webp",
-      "title": "IMG 2807",
-      "category": "Sketches",
-      "width": 2100,
-      "height": 2500
-    },
-    {
       "id": "sketches-levi-webp",
       "src": "/images/works/Illustrations/Sketches/Levi.webp",
       "title": "Levi",
@@ -872,14 +688,6 @@ export const illustrationGallery: IllustrationGallery = {
       "category": "Sketches",
       "width": 1895,
       "height": 1895
-    },
-    {
-      "id": "sketches-lulu-webp",
-      "src": "/images/works/Illustrations/Sketches/lulu.webp",
-      "title": "Lulu",
-      "category": "Sketches",
-      "width": 2100,
-      "height": 2100
     },
     {
       "id": "sketches-sketch001-webp",
@@ -930,14 +738,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 2240
     },
     {
-      "id": "sketches-untitled-artwork-12--webp",
-      "src": "/images/works/Illustrations/Sketches/Untitled_Artwork(12).webp",
-      "title": "Untitled Artwork(12)",
-      "category": "Sketches",
-      "width": 982,
-      "height": 1169
-    },
-    {
       "id": "sketches-untitled-artwork-15--webp",
       "src": "/images/works/Illustrations/Sketches/Untitled_Artwork(15).webp",
       "title": "Untitled Artwork(15)",
@@ -968,14 +768,6 @@ export const illustrationGallery: IllustrationGallery = {
       "category": "Sketches",
       "width": 2100,
       "height": 2100
-    },
-    {
-      "id": "sketches-untitled-12---copy-webp",
-      "src": "/images/works/Illustrations/Sketches/Untitled-12 - Copy.webp",
-      "title": "Untitled 12 Copy",
-      "category": "Sketches",
-      "width": 1893,
-      "height": 1893
     },
     {
       "id": "sketches-untitled-12-webp",
@@ -1018,14 +810,6 @@ export const illustrationGallery: IllustrationGallery = {
       "height": 1411
     },
     {
-      "id": "sketches-untitled-18-sketch-webp",
-      "src": "/images/works/Illustrations/Sketches/Untitled-18-sketch.webp",
-      "title": "Untitled 18 Sketch",
-      "category": "Sketches",
-      "width": 2100,
-      "height": 2100
-    },
-    {
       "id": "sketches-untitled-18-webp",
       "src": "/images/works/Illustrations/Sketches/Untitled-18.webp",
       "title": "Untitled 18",
@@ -1048,22 +832,6 @@ export const illustrationGallery: IllustrationGallery = {
       "category": "Sketches",
       "width": 1671,
       "height": 1989
-    },
-    {
-      "id": "sketches-untitled-25-webp",
-      "src": "/images/works/Illustrations/Sketches/Untitled-25.webp",
-      "title": "Untitled 25",
-      "category": "Sketches",
-      "width": 2100,
-      "height": 2500
-    },
-    {
-      "id": "sketches-untitled-26-copy-webp",
-      "src": "/images/works/Illustrations/Sketches/Untitled-26-copy.webp",
-      "title": "Untitled 26 Copy",
-      "category": "Sketches",
-      "width": 1605,
-      "height": 1910
     },
     {
       "id": "sketches-untitled-28-webp",
@@ -1095,14 +863,6 @@ export const illustrationGallery: IllustrationGallery = {
       "title": "Untitled 33",
       "category": "Sketches",
       "width": 3000,
-      "height": 2500
-    },
-    {
-      "id": "sketches-untitled-34-flat-webp",
-      "src": "/images/works/Illustrations/Sketches/Untitled-34-flat.webp",
-      "title": "Untitled 34 Flat",
-      "category": "Sketches",
-      "width": 2100,
       "height": 2500
     },
     {
@@ -1302,11 +1062,12 @@ export const illustrationGallery: IllustrationGallery = {
   ]
 }
 
+const STORAGE_KEY = 'tobi_xp_illustrations_order_v1'
+
 /**
  * Fisher-Yates array shuffle.
- * Creates a randomized copy of the array without modifying the original source.
  */
-function shuffleArray<T>(items: readonly T[]): T[] {
+function shuffleArray<T>(items: T[]): T[] {
   const result = [...items]
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -1317,19 +1078,81 @@ function shuffleArray<T>(items: readonly T[]): T[] {
   return result
 }
 
-// In-memory session cache initialized on page load to keep the shuffled order consistent throughout the session
-let sessionShuffledGallery: IllustrationGallery | null = null
-
-export function getShuffledGallery(): IllustrationGallery {
-  if (sessionShuffledGallery) return sessionShuffledGallery
-
-  sessionShuffledGallery = {
-    paintings: shuffleArray(illustrationGallery.paintings),
-    sketches: shuffleArray(illustrationGallery.sketches),
-    studies: shuffleArray(illustrationGallery.studies),
+/**
+ * Retrieves or initializes a persistent shuffled order for a specific category.
+ * Stored in localStorage so it is shuffled once on first visit and stays fixed across sessions.
+ */
+function getPersistentlyOrderedList(
+  categoryKey: 'paintings' | 'sketches' | 'studies',
+  sourceList: IllustrationImage[]
+): IllustrationImage[] {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return sourceList
   }
 
-  return sessionShuffledGallery
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    let state: Record<string, string[]> = {}
+    if (raw) {
+      try {
+        state = JSON.parse(raw)
+      } catch {
+        state = {}
+      }
+    }
+
+    const savedIds = state[categoryKey]
+    const currentIdMap = new Map(sourceList.map((img) => [img.id, img]))
+
+    // If we have a saved list of IDs for this category and it contains items
+    if (Array.isArray(savedIds) && savedIds.length > 0) {
+      const ordered: IllustrationImage[] = []
+      const seenIds = new Set<string>()
+
+      for (const id of savedIds) {
+        const item = currentIdMap.get(id)
+        if (item) {
+          ordered.push(item)
+          seenIds.add(id)
+        }
+      }
+
+      // Append any newly added images that weren't in the saved order
+      for (const item of sourceList) {
+        if (!seenIds.has(item.id)) {
+          ordered.push(item)
+        }
+      }
+
+      if (ordered.length > 0) {
+        return ordered
+      }
+    }
+
+    // First time initialization: shuffle once and persist
+    const shuffled = shuffleArray(sourceList)
+    state[categoryKey] = shuffled.map((img) => img.id)
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    return shuffled
+  } catch (err) {
+    console.warn('[Gallery] Failed to read/write persistent order from localStorage:', err)
+    return sourceList
+  }
+}
+
+// In-memory cache of the persistently shuffled categories for fast synchronous access
+let cachedShuffledGallery: IllustrationGallery | null = null
+
+export function getShuffledGallery(): IllustrationGallery {
+  if (cachedShuffledGallery) return cachedShuffledGallery
+
+  cachedShuffledGallery = {
+    paintings: getPersistentlyOrderedList('paintings', illustrationGallery.paintings),
+    sketches: getPersistentlyOrderedList('sketches', illustrationGallery.sketches),
+    studies: getPersistentlyOrderedList('studies', illustrationGallery.studies),
+  }
+
+  return cachedShuffledGallery
 }
 
 /**

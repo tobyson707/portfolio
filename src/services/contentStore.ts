@@ -269,13 +269,13 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
   about: {
     eyebrow: 'ABOUT',
     heading: 'I MAKE THINGS\nPEOPLE CAN EXPERIENCE.',
-    narrative: 'I’m Tobi XP, an illustrator and designer who enjoys turning ideas into things people can see, use, and interact with ;)',
-    personalityNote: 'Still learning, still experimenting, and always making something.',
+    narrative: 'I’m Tobi XP, an illustrator and designer who turns ideas into things people can see, use, and interact with.',
+    personalityNote: 'Still learning. Still experimenting. Always making.',
     ctaLabel: 'EXPLORE WORKS',
     paragraphs: [
-      'I’m Tobi XP, an illustrator and designer who enjoys turning ideas into things people can see, use, and interact with ;)',
-      'From illustration and character design to product design and interactive experiences, I like exploring ideas, figuring things out, and seeing where they lead.',
-      'Still learning, still experimenting, and always making something.',
+      'I’m Tobi XP, an illustrator and designer who turns ideas into things people can see, use, and interact with.',
+      'From illustration to product design, I like exploring ideas, figuring things out, and seeing where they lead.',
+      'Still learning. Still experimenting. Always making.',
     ],
     skills: [
       'Illustration',
@@ -320,7 +320,7 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
       {
         id: 'res-2',
         period: '2024 – Present',
-        place: 'MIVA Learning Studio',
+        place: 'MIVA',
         role: 'Illustrator & Designer',
         points: ['Designer (Simulation Developer & Creative Builder)'],
         links: [],

@@ -55,7 +55,6 @@ export default function SoundControl({
     if (controlledSoundOn !== undefined) {
       if (controlledSoundOn) {
         audioManager.setMuted(false)
-        audioManager.play(true)
       } else {
         audioManager.setMuted(true)
       }
