@@ -99,7 +99,6 @@ const ArtworkCard = React.memo(function ArtworkCard({
             }
           }}
         />
-        <div className="sturvs-artwork-hover-veil" aria-hidden="true" />
       </div>
     </div>
   )

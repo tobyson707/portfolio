@@ -4363,6 +4363,13 @@ canvas {
   pointer-events: none;
 }
 
+.hero-text-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+
 .hero-giant-typography {
   position: absolute;
   top: 50%;
@@ -6210,7 +6217,7 @@ canvas {
 @media (max-width: 768px) {
   .resume {
     position: relative;
-    background: linear-gradient(to bottom, rgba(10, 10, 12, 0.88) 0%, rgba(10, 10, 12, 0.97) 100%);
+    background: transparent;
     padding: 14vh 18px 16vh;
   }
 
@@ -6218,7 +6225,7 @@ canvas {
     width: 100%;
     margin: 0 0 32px 0;
     text-align: center;
-    color: #FFFFFF !important;
+    color: var(--ink);
   }
 
   .timeline {
@@ -7494,18 +7501,23 @@ canvas {
   position: absolute;
   cursor: pointer;
   outline: none;
-  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), z-index 0.2s;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  transition: z-index 0.2s ease;
 }
 
 .sturvs-artwork-frame {
   position: relative;
   width: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.24s ease, border-color 0.24s ease;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0;
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7517,31 +7529,25 @@ canvas {
   object-fit: contain;
   display: block;
   pointer-events: auto;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transition: filter 0.2s ease, opacity 0.2s ease;
 }
 
 .sturvs-artwork-hover-veil {
-  position: absolute;
-  inset: 0;
-  background: rgba(241, 87, 35, 0.04);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
+  display: none !important;
 }
 
 .sturvs-artwork-item:hover,
 .sturvs-artwork-item:focus-visible {
-  transform: scale(1.035) !important;
   z-index: 25;
 }
 
-.sturvs-artwork-item:hover .sturvs-artwork-frame,
-.sturvs-artwork-item:focus-visible .sturvs-artwork-frame {
-  border-color: rgba(var(--accent-rgb, 241, 87, 35), 0.7);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(var(--accent-rgb, 241, 87, 35), 0.4);
-}
-
-.sturvs-artwork-item:hover .sturvs-artwork-hover-veil {
-  opacity: 1;
+.sturvs-artwork-item:hover .sturvs-artwork-img,
+.sturvs-artwork-item:focus-visible .sturvs-artwork-img {
+  filter: brightness(1.06);
 }
 
 /* Floating Zoom & Fit Toolbar (Bottom-Center) */
@@ -7790,8 +7796,9 @@ canvas {
   height: auto;
   object-fit: contain;
   display: block;
-  border-radius: 4px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.75);
   pointer-events: auto;
 }
 

@@ -268,7 +268,7 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
   },
   about: {
     eyebrow: 'ABOUT',
-    heading: 'I MAKE THINGS\nPEOPLE CAN EXPERIENCE.',
+    heading: 'I MAKE THINGS\nPEOPLE CAN\nEXPERIENCE.',
     narrative: 'I’m Tobi XP, an illustrator and designer who turns ideas into things people can see, use, and interact with.',
     personalityNote: 'Still learning. Still experimenting. Always making.',
     ctaLabel: 'EXPLORE WORKS',

@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion, type MotionValue } from 'framer-motion'
 import * as THREE from 'three'
 import Scene from './scene/Scene'
 import Resume from './ui/Resume'
@@ -63,58 +63,95 @@ function Backdrop() {
 
 function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
   const heroContent = useContentStore((s) => s.site.hero)
+  const heroRef = useRef<HTMLElement>(null)
+  const shouldReduceMotion = useReducedMotion()
+
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  })
+
+  // Smooth, eased non-linear curve for natural cinematic fade
+  // Hero text remains 100% visible during initial scroll [0, 0.15], then fades gradually to 0 before Resume
+  const heroTextOpacity = useTransform(
+    heroProgress,
+    [0, 0.15, 0.35, 0.55, 0.75, 0.9],
+    [1, 1, 0.8, 0.5, 0.15, 0]
+  )
+
+  // Subtle upward drift (0px down to -32px), disabled if prefers-reduced-motion
+  const heroTextY = useTransform(
+    heroProgress,
+    [0, 0.15, 0.35, 0.55, 0.75, 0.9],
+    shouldReduceMotion
+      ? [0, 0, 0, 0, 0, 0]
+      : [0, 0, -8, -18, -26, -32]
+  )
+
+  const heroTextPointerEvents = useTransform(heroTextOpacity, (v) => (v < 0.05 ? 'none' : 'auto'))
+
   return (
-    <section className="hero" id="home">
-      {/* 巨大层叠艺术字体：TOBI + 身份标签，XP + I MAKE STUFF... (Hero Foreground Layer - Desktop & Tablet) */}
-      <div className="hero-giant-typography hero-desktop-only" aria-hidden="true">
-        <div className="hgt-tobi-wrap">
-          <span className="hgt-tobi">TOBI</span>
-          <span className="hgt-role-under">
-            {heroContent.role?.includes('&') ? (
-              <>
-                {heroContent.role.split('&')[0].trim()} <span className="hgt-amp">&amp;</span> {heroContent.role.split('&')[1].trim()}
-              </>
-            ) : (
-              heroContent.role || (
+    <section className="hero" id="home" ref={heroRef}>
+      {/* Scroll-faded Hero Text Layer (Cinematic fade & subtle upward translation) */}
+      <motion.div
+        className="hero-text-container"
+        style={{
+          opacity: heroTextOpacity,
+          y: heroTextY,
+          pointerEvents: heroTextPointerEvents,
+        }}
+      >
+        {/* 巨大层叠艺术字体：TOBI + 身份标签，XP + I MAKE STUFF... (Hero Foreground Layer - Desktop & Tablet) */}
+        <div className="hero-giant-typography hero-desktop-only" aria-hidden="true">
+          <div className="hgt-tobi-wrap">
+            <span className="hgt-tobi">TOBI</span>
+            <span className="hgt-role-under">
+              {heroContent.role?.includes('&') ? (
                 <>
-                  ILLUSTRATOR <span className="hgt-amp">&amp;</span> DESIGNER
+                  {heroContent.role.split('&')[0].trim()} <span className="hgt-amp">&amp;</span> {heroContent.role.split('&')[1].trim()}
                 </>
-              )
-            )}
-          </span>
-        </div>
-        <div className="hgt-xp-wrap">
-          <span className="hgt-xp">XP</span>
-          <div className="hgt-statement-annotation">
-            <p style={{ whiteSpace: 'pre-line' }}>
-              {heroContent.heroStatement || `UHMMM... I DIDN’T REALLY\nKNOW WHAT TO PUT HERE,\nSO THIS IS WHAT WE’RE\nGOING WITH LOL`}
-            </p>
+              ) : (
+                heroContent.role || (
+                  <>
+                    ILLUSTRATOR <span className="hgt-amp">&amp;</span> DESIGNER
+                  </>
+                )
+              )}
+            </span>
+          </div>
+          <div className="hgt-xp-wrap">
+            <span className="hgt-xp">XP</span>
+            <div className="hgt-statement-annotation">
+              <p style={{ whiteSpace: 'pre-line' }}>
+                {heroContent.heroStatement || `UHMMM... I DIDN’T REALLY\nKNOW WHAT TO PUT HERE,\nSO THIS IS WHAT WE’RE\nGOING WITH LOL`}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 顶部中心微标语 (Desktop & Tablet) */}
-      <div className="hero-micro top-center hero-desktop-only">
-        <span>{heroContent.microCopyTop || 'FIGURING IT OUT AS I GO.'}</span>
-        <span className="micro-dot-orange" />
-      </div>
+        {/* 顶部中心微标语 (Desktop & Tablet) */}
+        <div className="hero-micro top-center hero-desktop-only">
+          <span>{heroContent.microCopyTop || 'FIGURING IT OUT AS I GO.'}</span>
+          <span className="micro-dot-orange" />
+        </div>
 
-      {/* 左侧微标语 (Desktop & Tablet) */}
-      <div className="hero-micro left-side hero-desktop-only">
-        <div className="crosshair-marker">+</div>
-        <p className="hero-bio-lines" style={{ whiteSpace: 'pre-line' }}>
-          {heroContent.microCopyLeft || 'I DRAW.\nI DESIGN.\nI BUILD THINGS.'}
-        </p>
-        <span className="micro-line" />
-      </div>
+        {/* 左侧微标语 (Desktop & Tablet) */}
+        <div className="hero-micro left-side hero-desktop-only">
+          <div className="crosshair-marker">+</div>
+          <p className="hero-bio-lines" style={{ whiteSpace: 'pre-line' }}>
+            {heroContent.microCopyLeft || 'I DRAW.\nI DESIGN.\nI BUILD THINGS.'}
+          </p>
+          <span className="micro-line" />
+        </div>
 
-      {/* 角色旁微标语 (Desktop & Tablet) */}
-      <div className="hero-micro near-character hero-desktop-only">
-        <div className="crosshair-marker">+</div>
-        <p className="hero-interact-hint" style={{ whiteSpace: 'pre-line' }}>
-          {heroContent.microCopyHint || 'GO AHEAD.\nMOVE IT.'}
-        </p>
-      </div>
+        {/* 角色旁微标语 (Desktop & Tablet) */}
+        <div className="hero-micro near-character hero-desktop-only">
+          <div className="crosshair-marker">+</div>
+          <p className="hero-interact-hint" style={{ whiteSpace: 'pre-line' }}>
+            {heroContent.microCopyHint || 'GO AHEAD.\nMOVE IT.'}
+          </p>
+        </div>
+      </motion.div>
 
       {/* 底部居中精致滚动指示器 (Desktop & Tablet) */}
       <motion.div
@@ -137,14 +174,21 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
       {/* 移动端专属极简居中底部布局 (Mobile Hero Only) */}
       <div className="hero-mobile-gradient" aria-hidden="true" />
       <div className="hero-mobile-layout">
-        <div className="hero-mobile-branding">
+        <motion.div
+          className="hero-mobile-branding"
+          style={{
+            opacity: heroTextOpacity,
+            y: heroTextY,
+            pointerEvents: heroTextPointerEvents,
+          }}
+        >
           <h1 className="hero-mobile-title">
             TOBI <span className="hero-mobile-orange">XP</span>
           </h1>
           <p className="hero-mobile-subtitle">
             ILLUSTRATOR <span className="hero-mobile-orange">&amp;</span> DESIGNER
           </p>
-        </div>
+        </motion.div>
         <motion.div
           className="hero-mobile-scroll-cue"
           style={{ opacity: cueOpacity }}
