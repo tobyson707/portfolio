@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { useContentStore } from '../services/contentStore'
 import { scrollToContact, scrollToWorks } from '../utils/scroll'
 import { trackMenuInteraction, trackSocialClick } from '../services/analytics'
+import ThemeToggle from './ThemeToggle'
 
 export type NavSection = 'home' | 'about' | 'works' | 'store'
 
@@ -30,7 +31,10 @@ const HOVER_CARD_TEXTS: Record<NavSection, string> = {
 }
 
 export default function NavigationMenu() {
-  const [isOpen, setIsOpen] = useState(false)
+  const isMenuOpen = useStore((s) => s.isMenuOpen)
+  const setIsMenuOpen = useStore((s) => s.setIsMenuOpen)
+  const isOpen = isMenuOpen
+  const setIsOpen = setIsMenuOpen
   const currentView = useStore((s) => s.currentView)
   const setCurrentView = useStore((s) => s.setCurrentView)
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
@@ -41,6 +45,13 @@ export default function NavigationMenu() {
   const setCameFromHome = useStore((s) => s.setCameFromHome)
   const social = useContentStore((s) => s.site.social)
   const contact = useContentStore((s) => s.site.contact)
+
+  // Clean up menu open state on unmount
+  useEffect(() => {
+    return () => {
+      useStore.getState().setIsMenuOpen(false)
+    }
+  }, [])
 
   const dynamicSocialLinks = useMemo(() => {
     const instagramUrl = social?.instagram || 'https://instagram.com/tobi.xp/'
@@ -72,7 +83,7 @@ export default function NavigationMenu() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen])
+  }, [isOpen, setIsOpen])
 
   // Reset hover/focus state when menu closes
   useEffect(() => {
@@ -163,7 +174,7 @@ export default function NavigationMenu() {
         }
       }
     },
-    [currentView, setCurrentView, setPendingScrollTarget, isAboutOpen, setIsAboutOpen, setSavedHomeScrollY, setCameFromHome]
+    [currentView, setCurrentView, setPendingScrollTarget, isAboutOpen, setIsAboutOpen, setSavedHomeScrollY, setCameFromHome, setIsOpen]
   )
 
   const handleItemMouseMove = (
@@ -253,7 +264,7 @@ export default function NavigationMenu() {
 
   return (
     <>
-      {/* Top-right trigger button (only visible when menu is closed and no modal is open) */}
+      {/* Top-right navigation controls group: [ LIGHT/DARK ] [ MENU ] */}
       <AnimatePresence>
         {!isOpen && !isModalOpen && (
           <motion.div
@@ -263,6 +274,7 @@ export default function NavigationMenu() {
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
           >
+            <ThemeToggle />
             <button
               type="button"
               className="nav-trigger-btn"

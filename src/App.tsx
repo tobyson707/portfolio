@@ -12,7 +12,6 @@ import SoundActivationPrompt from './ui/SoundActivationPrompt'
 import NavigationMenu from './ui/NavigationMenu'
 import AboutPage from './ui/AboutPage'
 import NotFoundPage from './ui/NotFoundPage'
-import ThemeToggle from './ui/ThemeToggle'
 import BackToTop from './ui/BackToTop'
 import { useStore } from './store'
 import { SITE_CONTENT } from './data/siteContent'
@@ -152,6 +151,13 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
           </p>
         </div>
       </motion.div>
+
+      {/* 底部居中局域暗色渐变（提升 SCROLL 指示器在深色角色与背景上的对比度与易读性） */}
+      <motion.div
+        className="hero-scroll-gradient hero-desktop-only"
+        style={{ opacity: cueOpacity }}
+        aria-hidden="true"
+      />
 
       {/* 底部居中精致滚动指示器 (Desktop & Tablet) */}
       <motion.div
@@ -509,9 +515,8 @@ function PublicPortfolio() {
       {/* 底部左侧常驻返回顶部 (Back to Top Button) */}
       <BackToTop />
 
-      {/* 底部右侧常驻全局控制 (Global Controls: Theme, Sound) */}
+      {/* 底部右侧常驻全局控制 (Global Sound Control) */}
       <div className="global-controls">
-        <ThemeToggle />
         <SoundControl />
       </div>
 

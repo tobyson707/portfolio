@@ -23,6 +23,7 @@ import { useStore } from '../store'
  * All transitions are smooth, subtle, and intentional with zero clicks or pops.
  */
 export function useAudioEngineEffects() {
+  const isMenuOpen = useStore((s) => s.isMenuOpen)
   const isAboutOpen = useStore((s) => s.isAboutOpen)
   const isModalOpen = useStore((s) => s.isModalOpen)
   const currentView = useStore((s) => s.currentView)
@@ -33,13 +34,18 @@ export function useAudioEngineEffects() {
     audioEngine.setSelectedCategory(selectedCategory)
   }, [selectedCategory])
 
+  // Sync menu state directly to the Audio Engine with smooth 500ms underwater transition
+  useEffect(() => {
+    audioEngine.setMenuOpen(isMenuOpen, 0.5)
+  }, [isMenuOpen])
+
   const isOverlayActiveRef = useRef(false)
   isOverlayActiveRef.current = Boolean(
-    isAboutOpen || isModalOpen || currentView !== 'home' || Boolean(selectedCategory)
+    isMenuOpen || isAboutOpen || isModalOpen || currentView !== 'home' || Boolean(selectedCategory)
   )
 
   // Smooth scroll sync with continuous underwater interpolation around Resume
-  const syncScrollSection = useCallback(() => {
+  const syncScrollSection = useCallback((duration = 0.5) => {
     if (isOverlayActiveRef.current) return
 
     const scrollY = window.scrollY
@@ -100,11 +106,17 @@ export function useAudioEngineEffects() {
       }
     }
 
-    audioEngine.setScrollUnderwater(underwaterFactor, baseSection)
+    audioEngine.setScrollUnderwater(underwaterFactor, baseSection, duration)
   }, [])
 
-  // Handle overlay states: Categories, About page, and Case Study modals
+  // Handle overlay states: Menu, Categories, About page, and Case Study modals
   useEffect(() => {
+    // If global Menu is open, SUBMERGED environment takes immediate precedence
+    if (isMenuOpen) {
+      audioEngine.setMenuOpen(true, 0.5)
+      return
+    }
+
     // If an Illustrations or Designs category is open, its SUBMERGED environment takes priority
     if (selectedCategory && isSubmergedCategory(selectedCategory)) {
       audioEngine.setSelectedCategory(selectedCategory)
@@ -129,9 +141,9 @@ export function useAudioEngineEffects() {
       return
     }
 
-    // Returning to home view: immediately resync to current scroll position
-    syncScrollSection()
-  }, [isAboutOpen, isModalOpen, currentView, selectedCategory, syncScrollSection])
+    // Returning to home view: smoothly resync to current scroll position over 500ms
+    syncScrollSection(0.5)
+  }, [isMenuOpen, isAboutOpen, isModalOpen, currentView, selectedCategory, syncScrollSection])
 
   // Attach smooth scroll listener
   useEffect(() => {

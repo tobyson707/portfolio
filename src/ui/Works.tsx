@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type Ref } from 'react'
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
 import { WORKS, assetUrl, type WorkListItem, type WorkSection, type WorksLang } from '../data/works'
 import {
   getCategoryImages,
@@ -32,11 +32,13 @@ function SectionCard({
   data,
   onOpen,
   onHoverItem,
+  innerRef,
 }: {
   section: WorkSection
   data: WorksLang
   onOpen: (item: WorkListItem) => void
   onHoverItem: (item: WorkListItem | null) => void
+  innerRef?: Ref<HTMLDivElement>
 }) {
   const isIllustrations =
     section.id === 'ad' ||
@@ -59,7 +61,7 @@ function SectionCard({
   const altText = isIllustrations ? 'Illustration portfolio preview' : `${section.title} cover`
 
   return (
-    <div className="wk-card">
+    <div className="wk-card" ref={innerRef}>
       <div className="wk-card-header">
         <div className="wk-card-head">
           <span className="wk-card-no">{section.no}</span>
@@ -470,6 +472,7 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
   // 竖滚 pin 转横移：测量整排卡片的实际可横移距离（px），竖滚进度 → 横移
   const galleryRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const firstCardRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: galleryRef,
     offset: ['start start', 'end end'],
@@ -514,8 +517,45 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
 
   // px 数值插值（比 vw 字符串更顺）；竖滚行程与横移 1:1
   const x = useTransform(scrollYProgress, [0, 1], [0, -scrollRange])
-  // 横移到底时「继续下滑」提示渐隐
-  const hintOpacity = useTransform(scrollYProgress, [0.85, 1], [1, 0])
+  
+  // Works horizontal scroll cue: remains fully visible while project cards are outside the viewport,
+  // and smoothly fades out (300-500ms) only when the first project card begins meaningfully entering the visible viewport
+  const [isFirstCardEntering, setIsFirstCardEntering] = useState(false)
+  const isFirstCardEnteringRef = useRef(false)
+
+  const checkCardIntersection = useCallback(() => {
+    if (!firstCardRef.current) return
+    const rect = firstCardRef.current.getBoundingClientRect()
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1000
+
+    // Measure how much of the first project card has entered from the right edge into the visible viewport
+    const visibleWidth = viewportWidth - rect.left
+
+    // Enter threshold: starts fading as soon as a small, meaningful portion (~24px) of the card enters
+    // Re-entry threshold: returns to visible if the card slides back out beyond the viewport edge (< 10px)
+    if (!isFirstCardEnteringRef.current && visibleWidth >= 24) {
+      isFirstCardEnteringRef.current = true
+      setIsFirstCardEntering(true)
+    } else if (isFirstCardEnteringRef.current && visibleWidth < 10) {
+      isFirstCardEnteringRef.current = false
+      setIsFirstCardEntering(false)
+    }
+  }, [])
+
+  useMotionValueEvent(scrollYProgress, 'change', checkCardIntersection)
+
+  useEffect(() => {
+    checkCardIntersection()
+    const rafId = requestAnimationFrame(checkCardIntersection)
+    window.addEventListener('scroll', checkCardIntersection, { passive: true })
+    window.addEventListener('resize', checkCardIntersection)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('scroll', checkCardIntersection)
+      window.removeEventListener('resize', checkCardIntersection)
+    }
+  }, [checkCardIntersection])
+
   // WORKS title fades out progressively as user scrolls toward Contact
   const worksTitleOpacity = useTransform(scrollYProgress, [0.75, 0.96], [1, 0])
 
@@ -630,13 +670,14 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
           <motion.span className="wk-gallery-title" style={{ opacity: worksTitleOpacity }}>{resolvedData.title}</motion.span>
 
           <motion.div className="wk-track" ref={trackRef} style={{ x }}>
-            {sections.map((s) => (
+            {sections.map((s, idx) => (
               <SectionCard
                 key={s.id}
                 section={s}
                 data={resolvedData}
                 onOpen={openDetail}
                 onHoverItem={handleHoverItem}
+                innerRef={idx === 0 ? firstCardRef : undefined}
               />
             ))}
             <Contact content={{ ...SITE_CONTENT.contact, ...siteContent.contact }} />
@@ -645,9 +686,39 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
           <div className="wk-progress" aria-hidden="true">
             <motion.div className="wk-progress-fill" style={{ scaleX: scrollYProgress }} />
           </div>
-          <motion.span className="wk-hint" style={{ opacity: hintOpacity }} aria-hidden="true">
-            {resolvedData.hint}
-          </motion.span>
+
+          {/* Conversational Horizontal Scroll Cue (Tobi's personal invitation to keep exploring) */}
+          <motion.div
+            className="wk-scroll-cue"
+            animate={{ opacity: isFirstCardEntering ? 0 : 1 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            style={{
+              pointerEvents: isFirstCardEntering ? 'none' : 'auto',
+            }}
+            aria-label="Don’t stop... keep scrolling"
+          >
+            <div className="wk-scroll-cue-inner">
+              <span className="wk-scroll-cue-line">DON’T STOP...</span>
+              <span className="wk-scroll-cue-line wk-scroll-cue-lead">
+                KEEP SCROLLING
+                <span className="wk-scroll-cue-arrow" aria-hidden="true">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </span>
+              </span>
+            </div>
+          </motion.div>
         </div>
       </div>
 

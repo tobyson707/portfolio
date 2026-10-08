@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, ContactShadows, useGLTF, Center } from '@react-three/drei'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as THREE from 'three'
@@ -179,6 +179,44 @@ function ExhibitionModelContent({ isMobile }: { isMobile: boolean }) {
   )
 }
 
+/**
+ * Dynamic 3D model anchor tracker.
+ * Continuously projects the character's feet / contact shadow position in 3D world space
+ * into 2D coordinates within the model container, anchoring the DRAG TO EXPLORE instruction
+ * directly underneath the character's shoes with a comfortable, intentional visual gap.
+ */
+function CharacterCueAnchor({
+  wrapperRef,
+  isMobile,
+}: {
+  wrapperRef: React.RefObject<HTMLDivElement | null>
+  isMobile: boolean
+}) {
+  const { camera, size } = useThree()
+  const prevTopRef = useRef<number>(-1)
+
+  useFrame(() => {
+    if (!wrapperRef.current) return
+    const targetY = isMobile ? -1.02 : -1.05
+    const target = new THREE.Vector3(0, targetY, 0)
+    target.project(camera)
+
+    // target.y in NDC: +1 is top, -1 is bottom
+    const pxTop = (-target.y * 0.5 + 0.5) * size.height
+    // Small intentional gap directly below the shoes (18px on mobile, 22px on desktop)
+    const gap = isMobile ? 18 : 22
+    const clampedTop = Math.max(20, Math.min(pxTop + gap, size.height - (isMobile ? 36 : 48)))
+    const roundedTop = Math.round(clampedTop)
+
+    if (Math.abs(roundedTop - prevTopRef.current) >= 1) {
+      prevTopRef.current = roundedTop
+      wrapperRef.current.style.setProperty('--cue-top', `${roundedTop}px`)
+    }
+  })
+
+  return null
+}
+
 function About3DViewer({
   theme,
   onInteract,
@@ -188,6 +226,7 @@ function About3DViewer({
   onInteract: () => void
   hasInteracted: boolean
 }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 960 : false
   )
@@ -206,7 +245,7 @@ function About3DViewer({
   }
 
   return (
-    <div className="about-canvas-wrapper" style={{ touchAction: 'pan-y' }}>
+    <div ref={wrapperRef} className="about-canvas-wrapper" style={{ touchAction: 'pan-y' }}>
       <Canvas
         shadows={!isMobile}
         dpr={isMobile ? 1 : [1, 1.5]}
@@ -266,6 +305,8 @@ function About3DViewer({
             </mesh>
           )}
         </Suspense>
+
+        <CharacterCueAnchor wrapperRef={wrapperRef} isMobile={isMobile} />
 
         <OrbitControls
           makeDefault
@@ -504,8 +545,6 @@ export default function AboutPage({ onClose }: AboutPageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="about-eyebrow">{about.eyebrow}</span>
-
             <h1 className="about-main-title" style={{ whiteSpace: 'pre-line' }}>
               {about.heading}
             </h1>
@@ -523,12 +562,10 @@ export default function AboutPage({ onClose }: AboutPageProps) {
                   'Illustration',
                   'Character Design',
                   'UI/UX Design',
-                  'Product Design',
                   'Brand Identity',
                   'Interaction Design',
                   'Visual Storytelling',
                   'Concept Art',
-                  '3D Design',
                 ]).map((skill, index) => (
                   <li key={index} className="about-skill-pill">
                     {skill}
@@ -537,34 +574,56 @@ export default function AboutPage({ onClose }: AboutPageProps) {
               </ul>
             </section>
 
-            {/* Instagram 与 Email 社交链接 */}
-            <div className="about-social-links-row">
+            {/* Instagram 与 Email 社交图标链接 (Horizontal Row: Instagram first, Email second) */}
+            <div className="about-social-links-row" aria-label="Social and Contact Links">
               <a
-                href={social.instagram || 'https://instagram.com'}
-                className="about-secondary-link"
+                href={social.instagram || 'https://www.instagram.com/tobi.xp/'}
+                className="about-social-icon-btn"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Instagram (opens in new tab)"
+                title="Instagram"
                 onClick={() => trackSocialClick('instagram')}
               >
-                <svg className="about-link-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="about-link-icon"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
                 </svg>
-                <span>Instagram</span>
-                <span className="about-link-arrow">↗</span>
               </a>
               <a
-                href={social.email.startsWith('mailto:') ? social.email : `mailto:${social.email}`}
-                className="about-secondary-link"
+                href={social.email && social.email.startsWith('mailto:') ? social.email : `mailto:${social.email || 'businesstobixp@gmail.com'}`}
+                className="about-social-icon-btn"
+                aria-label="Email Tobi XP"
+                title="Email"
                 onClick={() => trackSocialClick('email')}
               >
-                <svg className="about-link-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="about-link-icon"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                <span>Email</span>
-                <span className="about-link-arrow">↗</span>
               </a>
             </div>
           </motion.div>

@@ -9,6 +9,7 @@ interface StoreState {
   theme: 'light' | 'dark'
   heroModelReady: boolean
   isModalOpen: boolean
+  isMenuOpen: boolean
   pendingScrollTarget: string | null
   isAboutOpen: boolean
   savedHomeScrollY: number
@@ -22,6 +23,7 @@ interface StoreState {
   setTheme: (theme: 'light' | 'dark') => void
   setHeroModelReady: (ready: boolean) => void
   setIsModalOpen: (open: boolean) => void
+  setIsMenuOpen: (open: boolean) => void
   setPendingScrollTarget: (target: string | null) => void
   setIsAboutOpen: (open: boolean) => void
   setSavedHomeScrollY: (y: number) => void
@@ -66,6 +68,7 @@ export const useStore = create<StoreState>((set) => ({
   theme: initialTheme,
   heroModelReady: false,
   isModalOpen: false,
+  isMenuOpen: false,
   pendingScrollTarget: null,
   isAboutOpen: false,
   savedHomeScrollY: 0,
@@ -87,6 +90,7 @@ export const useStore = create<StoreState>((set) => ({
   },
   setHeroModelReady: (ready) => set({ heroModelReady: ready }),
   setIsModalOpen: (open) => set({ isModalOpen: open }),
+  setIsMenuOpen: (open) => set({ isMenuOpen: open }),
   setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
   setIsAboutOpen: (open) =>
     set((state) => {

@@ -267,7 +267,7 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
     ],
   },
   about: {
-    eyebrow: 'ABOUT',
+    eyebrow: '',
     heading: 'I MAKE THINGS\nPEOPLE CAN\nEXPERIENCE.',
     narrative: 'I’m Tobi XP, an illustrator and designer who turns ideas into things people can see, use, and interact with.',
     personalityNote: 'Still learning. Still experimenting. Always making.',
@@ -281,12 +281,10 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
       'Illustration',
       'Character Design',
       'UI/UX Design',
-      'Product Design',
       'Brand Identity',
       'Interaction Design',
       'Visual Storytelling',
       'Concept Art',
-      '3D Design',
     ],
   },
   contact: {
@@ -300,7 +298,7 @@ export const INITIAL_SITE_CONTENT: SiteContentData = {
     sendLabel: 'SEND MESSAGE',
   },
   social: {
-    instagram: 'https://instagram.com/tobi.xp/',
+    instagram: 'https://www.instagram.com/tobi.xp/',
     email: 'mailto:businesstobixp@gmail.com',
     guestbookLabel: 'GUESTBOOK',
   },

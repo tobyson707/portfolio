@@ -19,6 +19,7 @@ export type AudioSection =
   | 'modal'
   | 'submerged'
   | 'SUBMERGED'
+  | 'menu'
   | string
 
 export type AudioEnvironment = 'DEFAULT' | 'SUBMERGED' | string
@@ -49,6 +50,7 @@ export interface AudioEngineState {
   activeEffect: AudioEffectParams
   selectedCategory: string | null
   isSubmerged: boolean
+  isMenuOpen: boolean
   environment: AudioEnvironment
 }
 
@@ -141,6 +143,8 @@ export const SECTION_PRESETS: Record<string, AudioEffectParams> = {
   resume: SUBMERGED_PRESET,
   submerged: SUBMERGED_PRESET,
   SUBMERGED: SUBMERGED_PRESET,
+  // Global Menu: Submerged underwater environment
+  menu: SUBMERGED_PRESET,
   // Stats / Editorial: Sleek, transitional, softened highs, warm presence
   stats: {
     filterCutoff: 9500,
@@ -249,6 +253,7 @@ export class AudioEngine {
   private scrollBaseSection: AudioSection = 'home'
   private isAboutActive = false
   private isModalActive = false
+  private isMenuActive = false
 
   private activeEffect: AudioEffectParams = { ...SECTION_PRESETS.home }
 
@@ -261,6 +266,7 @@ export class AudioEngine {
     activeEffect: { ...SECTION_PRESETS.home },
     selectedCategory: null,
     isSubmerged: false,
+    isMenuOpen: false,
     environment: 'DEFAULT',
   }
 
@@ -666,6 +672,25 @@ export class AudioEngine {
   }
 
   /**
+   * Sets or clears the Menu open state.
+   * When Menu opens, smoothly transitions to the SUBMERGED audio treatment over 300-700ms (default 0.5s).
+   * When Menu closes, smoothly returns to normal audio unless another submerged state (e.g. Category, Resume, About) is active.
+   */
+  public setMenuOpen(open: boolean, transitionDuration = 0.5): void {
+    if (this.isMenuActive === open) return
+    this.isMenuActive = open
+    this.state.isMenuOpen = open
+    this.syncEnvironment(transitionDuration)
+  }
+
+  /**
+   * Returns true if the global menu is currently open.
+   */
+  public isMenuOpen(): boolean {
+    return this.isMenuActive
+  }
+
+  /**
    * Returns the currently active Works category, or null if none is open.
    */
   public getSelectedCategory(): string | null {
@@ -688,19 +713,30 @@ export class AudioEngine {
 
   /**
    * Priority-aware audio environment reconciler:
-   * 1. Category SUBMERGED trigger (Illustrations / Designs categories)
-   * 2. Scroll-based SUBMERGED trigger (Resume section)
-   * 3. About page ('about')
-   * 4. Generic modal ('modal')
-   * 5. Baseline section ('home' | 'stats' | 'works')
+   * 1. Menu open (SUBMERGED environment takes immediate precedence)
+   * 2. Category SUBMERGED trigger (Illustrations / Designs categories)
+   * 3. Scroll-based SUBMERGED trigger (Resume section)
+   * 4. About page ('about' submerged acoustic profile)
+   * 5. Generic modal ('modal')
+   * 6. Baseline section ('home' | 'stats' | 'works')
    *
    * Ensures subtle, cinematic transitions with zero pops or clicks.
    */
   public syncEnvironment(transitionDuration = 1.4): void {
+    if (this.isMenuActive) {
+      // Priority 1: Menu is open -> submerged audio treatment
+      this.currentSection = 'menu'
+      this.state.currentSection = 'menu'
+      this.state.isSubmerged = true
+      this.state.environment = 'SUBMERGED'
+      this.setEffect(SUBMERGED_PRESET, transitionDuration)
+      return
+    }
+
     const isCatSubmerged = isSubmergedCategory(this.selectedCategory)
 
     if (isCatSubmerged) {
-      // Priority 1: Illustrations or Designs category is open
+      // Priority 2: Illustrations or Designs category is open
       this.currentSection = 'submerged'
       this.state.currentSection = 'submerged'
       this.state.isSubmerged = true
@@ -711,7 +747,7 @@ export class AudioEngine {
 
     // Category is NOT submerged. Check if other submerged triggers are active:
     if (this.scrollUnderwaterFactor >= 0.999) {
-      // Priority 2a: User is fully submerged in Resume reading zone
+      // Priority 3a: User is fully submerged in Resume reading zone
       this.currentSection = 'resume'
       this.state.currentSection = 'resume'
       this.state.isSubmerged = true
@@ -721,23 +757,23 @@ export class AudioEngine {
     }
 
     if (this.scrollUnderwaterFactor > 0.001) {
-      // Priority 2b: User is in the transition boundary around Resume
-      this.applyScrollUnderwaterInterpolation(this.scrollUnderwaterFactor, this.scrollBaseSection)
+      // Priority 3b: User is in the transition boundary around Resume
+      this.applyScrollUnderwaterInterpolation(this.scrollUnderwaterFactor, this.scrollBaseSection, transitionDuration)
       return
     }
 
     if (this.isAboutActive) {
-      // Priority 3: About page overlay
+      // Priority 4: About page overlay
       this.currentSection = 'about'
       this.state.currentSection = 'about'
-      this.state.isSubmerged = false
+      this.state.isSubmerged = true
       this.state.environment = 'ABOUT'
       this.setEffect(SECTION_PRESETS.about, transitionDuration)
       return
     }
 
     if (this.isModalActive) {
-      // Priority 4: Generic modal
+      // Priority 5: Generic modal
       this.currentSection = 'modal'
       this.state.currentSection = 'modal'
       this.state.isSubmerged = false
@@ -746,7 +782,7 @@ export class AudioEngine {
       return
     }
 
-    // Priority 5: Default section (home / stats / works)
+    // Priority 6: Default section (home / stats / works)
     const basePreset = SECTION_PRESETS[this.scrollBaseSection] || SECTION_PRESETS.home
     this.currentSection = this.scrollBaseSection
     this.state.currentSection = this.scrollBaseSection
@@ -763,23 +799,37 @@ export class AudioEngine {
    *
    * @param underwaterFactor 0 = normal audio, 1 = deep underwater
    * @param baseSection Target baseline section when not underwater ('home' | 'stats' | 'works')
+   * @param transitionDuration Optional duration for parameter ramping
    */
-  public setScrollUnderwater(underwaterFactor: number, baseSection: AudioSection = 'home'): void {
+  public setScrollUnderwater(
+    underwaterFactor: number,
+    baseSection: AudioSection = 'home',
+    transitionDuration?: number
+  ): void {
     this.scrollUnderwaterFactor = Math.max(0, Math.min(1, underwaterFactor))
     this.scrollBaseSection = baseSection
 
-    // If an Illustrations or Designs category is open, SUBMERGED priority is preserved
-    if (isSubmergedCategory(this.selectedCategory)) {
+    // If Menu is open, submerged category is open, or about is active, ignore scroll interpolation
+    if (
+      this.isMenuActive ||
+      isSubmergedCategory(this.selectedCategory) ||
+      this.isAboutActive ||
+      this.isModalActive
+    ) {
       return
     }
 
-    this.applyScrollUnderwaterInterpolation(this.scrollUnderwaterFactor, baseSection)
+    this.applyScrollUnderwaterInterpolation(this.scrollUnderwaterFactor, baseSection, transitionDuration)
   }
 
   /**
    * Applies the continuous scroll-based underwater interpolation.
    */
-  private applyScrollUnderwaterInterpolation(u: number, baseSection: AudioSection = 'home'): void {
+  private applyScrollUnderwaterInterpolation(
+    u: number,
+    baseSection: AudioSection = 'home',
+    transitionDuration = 0.2
+  ): void {
     const basePreset = SECTION_PRESETS[baseSection] || SECTION_PRESETS.home
     const underwaterPreset = SUBMERGED_PRESET
 
@@ -790,13 +840,13 @@ export class AudioEngine {
 
     if (u <= 0.001) {
       // Pure baseline section
-      this.setEffect(basePreset, 0.2)
+      this.setEffect(basePreset, transitionDuration)
       return
     }
 
     if (u >= 0.999) {
       // Pure underwater
-      this.setEffect(underwaterPreset, 0.2)
+      this.setEffect(underwaterPreset, transitionDuration)
       return
     }
 
@@ -821,7 +871,7 @@ export class AudioEngine {
         reverbWet,
         gainMultiplier,
       },
-      0.15
+      transitionDuration
     )
   }
 
@@ -830,17 +880,30 @@ export class AudioEngine {
    *
    * Smoothly transitions the audio parameters to match the specified site section.
    *
-   * @param sectionName The target section ('home' | 'resume' | 'stats' | 'works' | 'about' | 'modal')
+   * @param sectionName The target section ('home' | 'resume' | 'stats' | 'works' | 'about' | 'modal' | 'menu')
    */
   public setSection(sectionName: AudioSection): void {
     if (sectionName === 'about') {
       this.isAboutActive = true
     } else if (sectionName === 'modal') {
       this.isModalActive = true
+    } else if (sectionName === 'menu') {
+      this.isMenuActive = true
+      this.state.isMenuOpen = true
     } else {
       this.isAboutActive = false
       this.isModalActive = false
       this.scrollBaseSection = sectionName
+    }
+
+    if (this.isMenuActive) {
+      // Menu is open: keep SUBMERGED environment
+      this.currentSection = 'menu'
+      this.state.currentSection = 'menu'
+      this.state.isSubmerged = true
+      this.state.environment = 'SUBMERGED'
+      this.setEffect(SUBMERGED_PRESET, 0.5)
+      return
     }
 
     if (isSubmergedCategory(this.selectedCategory)) {
@@ -853,7 +916,8 @@ export class AudioEngine {
     const isSub =
       sectionName === 'resume' ||
       sectionName === 'submerged' ||
-      sectionName === 'SUBMERGED'
+      sectionName === 'SUBMERGED' ||
+      sectionName === 'menu'
     this.state.isSubmerged = isSub
     this.state.environment = isSub
       ? 'SUBMERGED'
@@ -864,7 +928,14 @@ export class AudioEngine {
       : 'DEFAULT'
 
     const preset = SECTION_PRESETS[sectionName] || SECTION_PRESETS.home
-    const transitionDuration = sectionName === 'about' ? 1.8 : sectionName === 'modal' ? 1.2 : 1.4
+    const transitionDuration =
+      sectionName === 'about'
+        ? 1.8
+        : sectionName === 'modal'
+        ? 1.2
+        : sectionName === 'menu'
+        ? 0.5
+        : 1.4
     this.setEffect(preset, transitionDuration)
   }
 
