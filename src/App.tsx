@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useEffect, useState } from 'react'
+import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion, type MotionValue } from 'framer-motion'
 import * as THREE from 'three'
@@ -19,7 +19,8 @@ import { scrollToWorks, scrollToContact } from './utils/scroll'
 import { useContentStore } from './services/contentStore'
 import { useAudioEngineEffects } from './hooks/useAudioEngineEffects'
 import { heroModelManager } from './scene/heroModelManager'
-import { isMobileDevice } from './utils/device'
+import { isMobileDevice, shouldUseMobilePerformanceMode } from './utils/device'
+import HeroCharacterFallback from './scene/HeroCharacterFallback'
 import {
   initAnalytics,
   trackPageView,
@@ -200,18 +201,22 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
         <motion.div
           className="hero-mobile-scroll-cue"
           style={{ opacity: cueOpacity }}
-          onClick={() => {
-            scrollToWorks()
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Scroll to content"
+          aria-hidden="true"
         >
-          <svg className="scroll-mouse-icon" viewBox="0 0 24 36" width="20" height="28" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="18" height="30" rx="9" strokeWidth="2" />
-            <circle className="scroll-mouse-wheel" cx="12" cy="10" r="2.5" fill="currentColor" stroke="none" />
+          <span className="hero-mobile-swipe-label">SWIPE</span>
+          <svg
+            className="hero-mobile-chevron"
+            viewBox="0 0 16 10"
+            width="12"
+            height="8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="2 3 8 8 14 3" />
           </svg>
-          <span className="scroll-cue-label">SCROLL</span>
         </motion.div>
       </div>
     </section>
@@ -227,6 +232,13 @@ function HomeView() {
   const { scrollY } = useScroll()
 
   const [isMobileScreen, setIsMobileScreen] = useState(() => isMobileDevice())
+  const isPerformanceMode = useMemo(() => shouldUseMobilePerformanceMode(), [])
+
+  useEffect(() => {
+    if (isPerformanceMode) {
+      heroModelManager.markPerformanceModeReady()
+    }
+  }, [isPerformanceMode])
 
   useEffect(() => {
     const handleResize = () => {
@@ -293,40 +305,44 @@ function HomeView() {
       transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
     >
 
-      {/* 固定的 3D 背景 (在打开 About 时暂停渲染帧循环，避免不必要的 GPU 计算与移动端 WebGL 重复挂载崩溃) */}
+      {/* 固定的背景：移动端性能模式或受限环境下使用轻量级角色视觉，避免 iOS Safari 内存耗尽与崩溃 */}
       <div className="scene-bg">
-        <CanvasErrorBoundary>
-          <Canvas
-            frameloop={isAboutOpen ? 'never' : 'always'}
-            shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
-            dpr={isMobileScreen ? 1 : [1, 1.5]}
-            camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
-            gl={{
-              alpha: true,
-              antialias: !isMobileScreen,
-              stencil: false,
-              depth: true,
-              powerPreference: isMobileScreen ? 'low-power' : 'default',
-              toneMapping: THREE.ACESFilmicToneMapping,
-            }}
-            onCreated={({ gl }) => {
-              const dom = gl.domElement
-              dom.addEventListener(
-                'webglcontextlost',
-                (e) => {
-                  e.preventDefault()
-                  console.warn('[TOBI XP] Background WebGL context lost handled')
-                },
-                false
-              )
-            }}
-          >
-            <Suspense fallback={null}>
-              <Backdrop />
-              <Scene />
-            </Suspense>
-          </Canvas>
-        </CanvasErrorBoundary>
+        {isPerformanceMode ? (
+          <HeroCharacterFallback />
+        ) : (
+          <CanvasErrorBoundary fallback={<HeroCharacterFallback />}>
+            <Canvas
+              frameloop={isAboutOpen ? 'never' : 'always'}
+              shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
+              dpr={isMobileScreen ? 1 : [1, 1.5]}
+              camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
+              gl={{
+                alpha: true,
+                antialias: !isMobileScreen,
+                stencil: false,
+                depth: true,
+                powerPreference: isMobileScreen ? 'low-power' : 'default',
+                toneMapping: THREE.ACESFilmicToneMapping,
+              }}
+              onCreated={({ gl }) => {
+                const dom = gl.domElement
+                dom.addEventListener(
+                  'webglcontextlost',
+                  (e) => {
+                    e.preventDefault()
+                    console.warn('[TOBI XP] Background WebGL context lost handled')
+                  },
+                  false
+                )
+              }}
+            >
+              <Suspense fallback={null}>
+                <Backdrop />
+                <Scene />
+              </Suspense>
+            </Canvas>
+          </CanvasErrorBoundary>
+        )}
       </div>
 
       {/* 滚动渐暗蒙层 */}

@@ -240,7 +240,28 @@ export default function Contact({ content: _content }: { content?: ContactConten
 
             {/* Contact Details — Directly below the contact form, aligned with left edge */}
             <div className="wk-contact-channels">
-              {/* Email Option */}
+              {/* Instagram Option (Instagram first) */}
+              <div className="wk-contact-channel">
+                <span className="wk-contact-channel-label">INSTAGRAM</span>
+                <div className="wk-contact-channel-action">
+                  <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="wk-contact-channel-link"
+                    onClick={() => {
+                      trackContactInteraction('social_click')
+                      trackSocialClick('instagram')
+                    }}
+                    aria-label={`Visit Instagram ${instagramHandle}`}
+                  >
+                    <InstagramIcon className="wk-contact-channel-icon" aria-hidden="true" />
+                    <span className="wk-contact-channel-val">{instagramHandle}</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Email Option (Email second) */}
               <div className="wk-contact-channel">
                 <span className="wk-contact-channel-label">EMAIL</span>
                 <div className="wk-contact-channel-action">
@@ -266,27 +287,6 @@ export default function Contact({ content: _content }: { content?: ContactConten
                       <Copy size={13} aria-hidden="true" />
                     )}
                   </button>
-                </div>
-              </div>
-
-              {/* Instagram Option */}
-              <div className="wk-contact-channel">
-                <span className="wk-contact-channel-label">INSTAGRAM</span>
-                <div className="wk-contact-channel-action">
-                  <a
-                    href={instagramUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="wk-contact-channel-link"
-                    onClick={() => {
-                      trackContactInteraction('social_click')
-                      trackSocialClick('instagram')
-                    }}
-                    aria-label={`Visit Instagram ${instagramHandle}`}
-                  >
-                    <InstagramIcon className="wk-contact-channel-icon" aria-hidden="true" />
-                    <span className="wk-contact-channel-val">{instagramHandle}</span>
-                  </a>
                 </div>
               </div>
             </div>

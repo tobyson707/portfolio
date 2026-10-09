@@ -5,13 +5,18 @@ import * as pdfjsLib from 'pdfjs-dist'
 import type { BrandProject } from '../data/brandIdentityManifest'
 import { SAMPLE_VERIFICATION_PDF } from '../data/brandIdentityManifest'
 import { useStore } from '../store'
+import { isMobileDevice } from '../utils/device'
 
-// Configure PDF.js Worker
+// ---------------------------------------------------------------------------
+// Configure PDF.js Worker — 100% same-origin, offline-capable, and CSP-compliant
+// ---------------------------------------------------------------------------
 if (typeof window !== 'undefined') {
   try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.0.379'}/pdf.worker.min.mjs`
-  } catch {
-    // fallback
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `${cleanBase}pdf.worker.min.mjs`
+  } catch (err) {
+    console.warn('[PDF] Failed to set worker source:', err)
   }
 }
 
@@ -30,13 +35,16 @@ interface PageDimensions {
 
 // ---------------------------------------------------------------------------
 // Individual PDF Page Item Component
-// Tightly wraps the canvas with exact dimensions from PDF.js page viewport.
+// Uses bounded canvas allocations and active windowing to protect mobile Safari
+// from out-of-memory crashes on multi-page, high-resolution PDFs.
 // ---------------------------------------------------------------------------
 interface PdfPageItemProps {
   pdfDoc: pdfjsLib.PDFDocumentProxy
   pageNumber: number
   scale: number
   dpr: number
+  isMobile: boolean
+  isWithinRenderWindow: boolean
   onPageDimensionsLoaded?: (pageNumber: number, dims: PageDimensions) => void
   onPageVisible: (pageNumber: number, intersectionRatio: number) => void
 }
@@ -46,56 +54,49 @@ const PdfPageItem = React.memo(function PdfPageItem({
   pageNumber,
   scale,
   dpr,
+  isMobile,
+  isWithinRenderWindow,
   onPageDimensionsLoaded,
   onPageVisible,
 }: PdfPageItemProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [baseDimensions, setBaseDimensions] = useState<PageDimensions | null>(null)
-  const [isIntersecting, setIsIntersecting] = useState<boolean>(false)
   const [isRendered, setIsRendered] = useState<boolean>(false)
+  const [renderError, setRenderError] = useState<string | null>(null)
   const renderTaskRef = useRef<any>(null)
 
-  // Fetch each page's own authentic base viewport dimensions
+  // Fetch authentic base viewport dimensions for this page
   useEffect(() => {
     let isCancelled = false
-    pdfDoc.getPage(pageNumber).then((page) => {
-      if (isCancelled) return
-      const vp = page.getViewport({ scale: 1.0 })
-      const dims: PageDimensions = {
-        width: vp.width,
-        height: vp.height,
-      }
-      setBaseDimensions(dims)
-      if (onPageDimensionsLoaded) {
-        onPageDimensionsLoaded(pageNumber, dims)
-      }
-    }).catch((err) => {
-      console.warn(`Error fetching dimensions for page ${pageNumber}:`, err)
-    })
+    pdfDoc
+      .getPage(pageNumber)
+      .then((page) => {
+        if (isCancelled) return
+        const vp = page.getViewport({ scale: 1.0 })
+        const dims: PageDimensions = {
+          width: vp.width,
+          height: vp.height,
+        }
+        setBaseDimensions(dims)
+        if (onPageDimensionsLoaded) {
+          onPageDimensionsLoaded(pageNumber, dims)
+        }
+      })
+      .catch((err) => {
+        console.warn(`[PDF] Error fetching dimensions for page ${pageNumber}:`, err)
+        setRenderError('Could not read page dimensions.')
+      })
 
     return () => {
       isCancelled = true
     }
   }, [pdfDoc, pageNumber, onPageDimensionsLoaded])
 
-  // Observe intersection for lazy rendering and page tracking
+  // Observe visibility for tracking currently visible page indicator
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-
-    const lazyObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0]
-        if (entry.isIntersecting) {
-          setIsIntersecting(true)
-        }
-      },
-      {
-        rootMargin: '400px 0px 400px 0px',
-        threshold: 0.01,
-      }
-    )
 
     const visibilityObserver = new IntersectionObserver(
       (entries) => {
@@ -107,18 +108,33 @@ const PdfPageItem = React.memo(function PdfPageItem({
       }
     )
 
-    lazyObserver.observe(el)
     visibilityObserver.observe(el)
 
     return () => {
-      lazyObserver.disconnect()
       visibilityObserver.disconnect()
     }
   }, [pageNumber, onPageVisible])
 
-  // Render authentic PDF page to canvas matching viewport dimensions exactly
+  // Render or clean up canvas depending on whether page is inside active render window
   useEffect(() => {
-    if (!isIntersecting || !baseDimensions) return
+    // If outside the active render window, clean up canvas bitmap to immediately reclaim mobile memory
+    if (!isWithinRenderWindow || !baseDimensions) {
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel()
+        } catch {
+          // ignore
+        }
+        renderTaskRef.current = null
+      }
+      const canvas = canvasRef.current
+      if (canvas) {
+        canvas.width = 0
+        canvas.height = 0
+      }
+      setIsRendered(false)
+      return
+    }
 
     let isCancelled = false
 
@@ -142,15 +158,22 @@ const PdfPageItem = React.memo(function PdfPageItem({
         const ctx = canvas.getContext('2d', { alpha: false })
         if (!ctx) return
 
-        // Compute exact viewport for display and for high-DPI rendering
+        // Compute display dimensions at requested scale
         const displayViewport = page.getViewport({ scale })
-        const renderViewport = page.getViewport({ scale: scale * dpr })
+        const targetW = Math.max(1, Math.floor(displayViewport.width))
+        const targetH = Math.max(1, Math.floor(displayViewport.height))
 
-        const targetW = Math.floor(displayViewport.width)
-        const targetH = Math.floor(displayViewport.height)
+        // Device-appropriate canvas resolution safeguards:
+        // Clamps canvas pixel dimensions so 4K PDF pages (e.g. 4096x2341 in funky-frames.pdf)
+        // do not allocate multi-megapixel framebuffers that crash mobile Safari
+        const maxCanvasWidth = isMobile ? 1600 : 2800
+        const rawRenderWidth = Math.floor(targetW * dpr)
+        const renderWidth = Math.min(rawRenderWidth, maxCanvasWidth)
+        const renderScaleMultiplier = renderWidth / targetW
+        const renderViewport = page.getViewport({ scale: scale * renderScaleMultiplier })
 
-        canvas.width = Math.floor(renderViewport.width)
-        canvas.height = Math.floor(renderViewport.height)
+        canvas.width = Math.max(1, Math.floor(renderViewport.width))
+        canvas.height = Math.max(1, Math.floor(renderViewport.height))
         canvas.style.width = `${targetW}px`
         canvas.style.height = `${targetH}px`
 
@@ -166,11 +189,13 @@ const PdfPageItem = React.memo(function PdfPageItem({
         await task.promise
         if (!isCancelled) {
           setIsRendered(true)
+          setRenderError(null)
           renderTaskRef.current = null
         }
       } catch (err: any) {
-        if (err?.name !== 'RenderingCancelledException') {
-          console.warn(`Page ${pageNumber} render notice:`, err)
+        if (err?.name !== 'RenderingCancelledException' && !isCancelled) {
+          console.warn(`[PDF] Page ${pageNumber} render notice:`, err)
+          setRenderError('Page rendering interrupted.')
         }
       }
     }
@@ -188,11 +213,11 @@ const PdfPageItem = React.memo(function PdfPageItem({
         renderTaskRef.current = null
       }
     }
-  }, [pdfDoc, pageNumber, scale, dpr, isIntersecting, baseDimensions])
+  }, [pdfDoc, pageNumber, scale, dpr, isMobile, isWithinRenderWindow, baseDimensions])
 
-  // Exact wrapper dimensions calculated directly from PDF viewport at current zoom
-  const currentWidth = baseDimensions ? Math.floor(baseDimensions.width * scale) : 0
-  const currentHeight = baseDimensions ? Math.floor(baseDimensions.height * scale) : 0
+  // Exact wrapper dimensions calculated directly from authentic PDF viewport at current zoom
+  const currentWidth = baseDimensions ? Math.max(1, Math.floor(baseDimensions.width * scale)) : 0
+  const currentHeight = baseDimensions ? Math.max(1, Math.floor(baseDimensions.height * scale)) : 0
 
   return (
     <div
@@ -201,7 +226,7 @@ const PdfPageItem = React.memo(function PdfPageItem({
       data-page-number={pageNumber}
       style={{
         width: currentWidth > 0 ? `${currentWidth}px` : '100%',
-        height: currentHeight > 0 ? `${currentHeight}px` : 'auto',
+        minHeight: currentHeight > 0 ? `${currentHeight}px` : '240px',
       }}
     >
       <canvas
@@ -213,14 +238,23 @@ const PdfPageItem = React.memo(function PdfPageItem({
           height: currentHeight > 0 ? `${currentHeight}px` : 'auto',
         }}
       />
-      {!isRendered && currentHeight > 0 && (
+      {!isRendered && (
         <div
           className="pdf-page-placeholder"
           aria-hidden="true"
-          style={{ width: `${currentWidth}px`, height: `${currentHeight}px` }}
+          style={{
+            width: currentWidth > 0 ? `${currentWidth}px` : '100%',
+            height: currentHeight > 0 ? `${currentHeight}px` : '240px',
+          }}
         >
-          <div className="pdf-page-skeleton-spinner" />
-          <span className="pdf-page-skeleton-text">PAGE {String(pageNumber).padStart(2, '0')}</span>
+          {renderError ? (
+            <span className="pdf-page-skeleton-text">{renderError}</span>
+          ) : (
+            <>
+              <div className="pdf-page-skeleton-spinner" />
+              <span className="pdf-page-skeleton-text">PAGE {String(pageNumber).padStart(2, '0')}</span>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -246,6 +280,8 @@ export default function PdfPopupViewer({
   const [activePdfPath, setActivePdfPath] = useState<string>(project.pdfPath)
   const [isUsingSample, setIsUsingSample] = useState<boolean>(false)
 
+  const isMobile = typeof window !== 'undefined' ? isMobileDevice() : false
+
   // Map of page dimensions
   const pageDimensionsMapRef = useRef<Map<number, PageDimensions>>(new Map())
   const [firstPageDimensions, setFirstPageDimensions] = useState<PageDimensions | null>(null)
@@ -253,8 +289,9 @@ export default function PdfPopupViewer({
   // Track visibility ratios of each page to determine current active page indicator
   const pageRatiosRef = useRef<Map<number, number>>(new Map())
 
-  // Device pixel ratio for crisp rendering
-  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
+  // Memory-safe device pixel ratio:
+  // Mobile capped at 1.25x to ensure sharp vector rendering without exceeding Safari GPU limits
+  const dpr = typeof window !== 'undefined' ? (isMobile ? 1.25 : Math.min(window.devicePixelRatio || 1, 2)) : 1
 
   // Synchronize modal state & body scroll lock
   useEffect(() => {
@@ -288,7 +325,24 @@ export default function PdfPopupViewer({
     }
   }, [])
 
-  // Load PDF Document
+  // Auto-fit to width on initial load or orientation change
+  const fitWidthToContainer = useCallback((dims?: PageDimensions | null) => {
+    const targetDims = dims || firstPageDimensions || pageDimensionsMapRef.current.get(1)
+    if (!targetDims) return
+
+    const container = scrollContainerRef.current
+    const viewportWidth = container?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 800)
+    // Horizontal padding inside viewer
+    const horizontalPadding = isMobile ? 24 : 64
+    const availableWidth = Math.max(280, viewportWidth - horizontalPadding)
+    const fitScale = availableWidth / targetDims.width
+
+    // Clamp scale to readable range
+    const clampedScale = Math.max(0.2, Math.min(fitScale, isMobile ? 1.2 : 1.5))
+    setScale(Number(clampedScale.toFixed(2)))
+  }, [firstPageDimensions, isMobile])
+
+  // Load PDF Document with local, same-origin cMap support
   useEffect(() => {
     if (!isOpen || !activePdfPath) return
 
@@ -299,10 +353,14 @@ export default function PdfPopupViewer({
     pageDimensionsMapRef.current.clear()
     pageRatiosRef.current.clear()
 
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+
     const loadingTask = pdfjsLib.getDocument({
       url: activePdfPath,
-      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.0.379'}/cmaps/`,
+      cMapUrl: `${cleanBase}cmaps/`,
       cMapPacked: true,
+      standardFontDataUrl: `${cleanBase}standard_fonts/`,
     })
 
     loadingTask.promise
@@ -319,6 +377,7 @@ export default function PdfPopupViewer({
             const dims: PageDimensions = { width: vp.width, height: vp.height }
             pageDimensionsMapRef.current.set(1, dims)
             setFirstPageDimensions(dims)
+            fitWidthToContainer(dims)
           }
         } catch {
           // ignore
@@ -328,10 +387,10 @@ export default function PdfPopupViewer({
       })
       .catch((err) => {
         if (isCancelled) return
-        console.warn('PDF load notice:', err?.message || err)
+        console.warn('[PDF] Document load error:', err?.message || err)
         setLoadError(
           err?.message ||
-            'The PDF case study for this project has not yet been uploaded.'
+            'The PDF case study for this project could not be opened.'
         )
         setIsLoading(false)
       })
@@ -344,82 +403,94 @@ export default function PdfPopupViewer({
         // ignore
       }
     }
-  }, [isOpen, activePdfPath])
+  }, [isOpen, activePdfPath, fitWidthToContainer])
 
-  // Fit to Width Handler — calculates optimal scale from authentic PDF page dimensions
-  const handleFitToWidth = useCallback(() => {
-    const container = scrollContainerRef.current
-    const viewportWidth = container ? container.clientWidth : (typeof window !== 'undefined' ? window.innerWidth : 1200)
-
-    const horizontalPadding = typeof window !== 'undefined' && window.innerWidth < 640 ? 24 : 64
-    const availableWidth = Math.max(300, Math.min(viewportWidth - horizontalPadding, 1100))
-
-    const referenceWidth = firstPageDimensions ? firstPageDimensions.width : 800
-    const calculatedScale = availableWidth / referenceWidth
-    const clampedScale = parseFloat(Math.max(0.25, Math.min(2.5, calculatedScale)).toFixed(2))
-    setScale(clampedScale)
-  }, [firstPageDimensions])
-
-  // Auto-fit on initial document load
+  // Handle window resize or orientation change
   useEffect(() => {
-    if (firstPageDimensions && !isLoading) {
-      handleFitToWidth()
+    const handleResize = () => {
+      if (firstPageDimensions) {
+        fitWidthToContainer(firstPageDimensions)
+      }
     }
-  }, [firstPageDimensions, isLoading, handleFitToWidth])
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [firstPageDimensions, fitWidthToContainer])
 
-  // Zoom In / Out Handlers
+  // Zoom controls
   const handleZoomIn = useCallback(() => {
-    setScale((s) => Math.min(2.5, parseFloat((s + 0.15).toFixed(2))))
-  }, [])
+    setScale((prev) => Math.min(Number((prev + 0.15).toFixed(2)), isMobile ? 2.0 : 3.0))
+  }, [isMobile])
 
   const handleZoomOut = useCallback(() => {
-    setScale((s) => Math.max(0.25, parseFloat((s - 0.15).toFixed(2))))
+    setScale((prev) => Math.max(Number((prev - 0.15).toFixed(2)), 0.25))
   }, [])
 
-  // Callback when a page's intersection ratio changes to update active page number
-  const handlePageVisible = useCallback((pageNumber: number, ratio: number) => {
-    pageRatiosRef.current.set(pageNumber, ratio)
-
-    let bestPage = 1
-    let maxRatio = -1
-
-    pageRatiosRef.current.forEach((r, p) => {
-      if (r > maxRatio && r > 0.05) {
-        maxRatio = r
-        bestPage = p
-      }
-    })
-
-    if (maxRatio > 0.05) {
-      setVisiblePage(bestPage)
+  // Page jump navigation (Previous / Next page)
+  const scrollToPage = useCallback((targetPage: number) => {
+    if (!scrollContainerRef.current) return
+    const clampedPage = Math.max(1, Math.min(targetPage, numPages))
+    const pageEl = scrollContainerRef.current.querySelector(`[data-page-number="${clampedPage}"]`) as HTMLElement | null
+    if (pageEl) {
+      pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setVisiblePage(clampedPage)
     }
-  }, [])
+  }, [numPages])
+
+  const handlePrevPage = useCallback(() => {
+    scrollToPage(visiblePage - 1)
+  }, [scrollToPage, visiblePage])
+
+  const handleNextPage = useCallback(() => {
+    scrollToPage(visiblePage + 1)
+  }, [scrollToPage, visiblePage])
 
   // Keyboard navigation
   useEffect(() => {
     if (!isOpen) return
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
         onClose()
+      } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        handleNextPage()
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        handlePrevPage()
       } else if (e.key === '+' || e.key === '=') {
-        e.preventDefault()
         handleZoomIn()
       } else if (e.key === '-') {
-        e.preventDefault()
         handleZoomOut()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose, handleZoomIn, handleZoomOut])
+  }, [isOpen, onClose, handleNextPage, handlePrevPage, handleZoomIn, handleZoomOut])
+
+  // Page visibility ratio update to highlight active visible page
+  const handlePageVisible = useCallback((pageNumber: number, intersectionRatio: number) => {
+    pageRatiosRef.current.set(pageNumber, intersectionRatio)
+
+    let maxRatio = 0
+    let bestPage = visiblePage
+
+    pageRatiosRef.current.forEach((ratio, pageNo) => {
+      if (ratio > maxRatio) {
+        maxRatio = ratio
+        bestPage = pageNo
+      }
+    })
+
+    if (maxRatio > 0.15 && bestPage !== visiblePage) {
+      setVisiblePage(bestPage)
+    }
+  }, [visiblePage])
 
   if (typeof document === 'undefined') return null
 
   const pageNumbers = Array.from({ length: numPages }, (_, i) => i + 1)
+
+  // Mobile active rendering window:
+  // Renders the visible page + 1 adjacent page on mobile, or 2 on desktop,
+  // preventing out-of-memory crashes on 34-page documents
+  const renderWindowRadius = isMobile ? 1 : 2
 
   return createPortal(
     <AnimatePresence>
@@ -482,7 +553,7 @@ export default function PdfPopupViewer({
               </div>
             )}
 
-            {/* Unavailable / File Waiting State */}
+            {/* Error or Missing File Fallback State */}
             {!isLoading && loadError && (
               <motion.div
                 className="pdf-popup-fallback-card"
@@ -501,10 +572,7 @@ export default function PdfPopupViewer({
                 <div className="pdf-fallback-kicker">BRAND IDENTITY CASE STUDY</div>
                 <h3 className="pdf-fallback-title">{project.title}</h3>
                 <p className="pdf-fallback-desc">
-                  {project.description}
-                </p>
-                <p className="pdf-fallback-note">
-                  PDF document ({project.pdfPath.split('/').pop()}) will be available as soon as it is uploaded to the portfolio.
+                  {loadError}
                 </p>
                 <div className="pdf-fallback-actions">
                   <button
@@ -515,7 +583,7 @@ export default function PdfPopupViewer({
                       setIsUsingSample(true)
                     }}
                   >
-                    <span>PREVIEW VIEWER WITH SAMPLE PDF</span>
+                    <span>PREVIEW WITH SAMPLE PDF</span>
                     <span aria-hidden="true">→</span>
                   </button>
                   <button
@@ -529,7 +597,7 @@ export default function PdfPopupViewer({
               </motion.div>
             )}
 
-            {/* Continuous Vertical Scroll Container Rendering All Pages Stacked Vertically */}
+            {/* Continuous Vertical Scroll Container with Virtualized Page Canvases */}
             {!isLoading && !loadError && pdfDoc && (
               <div
                 ref={scrollContainerRef}
@@ -538,17 +606,22 @@ export default function PdfPopupViewer({
                 aria-label="Continuous document viewer"
               >
                 <div className="pdf-popup-pages-stack">
-                  {pageNumbers.map((pageNo) => (
-                    <PdfPageItem
-                      key={`${activePdfPath}-page-${pageNo}`}
-                      pdfDoc={pdfDoc}
-                      pageNumber={pageNo}
-                      scale={scale}
-                      dpr={dpr}
-                      onPageDimensionsLoaded={handlePageDimensionsLoaded}
-                      onPageVisible={handlePageVisible}
-                    />
-                  ))}
+                  {pageNumbers.map((pageNo) => {
+                    const isWithinWindow = Math.abs(pageNo - visiblePage) <= renderWindowRadius
+                    return (
+                      <PdfPageItem
+                        key={`${activePdfPath}-page-${pageNo}`}
+                        pdfDoc={pdfDoc}
+                        pageNumber={pageNo}
+                        scale={scale}
+                        dpr={dpr}
+                        isMobile={isMobile}
+                        isWithinRenderWindow={isWithinWindow}
+                        onPageDimensionsLoaded={handlePageDimensionsLoaded}
+                        onPageVisible={handlePageVisible}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -556,12 +629,38 @@ export default function PdfPopupViewer({
             {/* Bottom Minimalist Floating Control Bar */}
             {!isLoading && !loadError && pdfDoc && (
               <div className="pdf-popup-controls-row">
-                {/* Dynamic Page Indicator updating on vertical scroll */}
+                {/* Previous Page Button */}
+                <button
+                  type="button"
+                  className="pdf-popup-tool-btn"
+                  onClick={handlePrevPage}
+                  disabled={visiblePage <= 1}
+                  aria-label="Previous Page"
+                  title="Previous Page (↑)"
+                  style={{ opacity: visiblePage <= 1 ? 0.4 : 1 }}
+                >
+                  ‹
+                </button>
+
+                {/* Dynamic Page Indicator */}
                 <div className="pdf-popup-page-indicator" title="Current visible page">
                   <span className="pdf-curr-page">{String(visiblePage).padStart(2, '0')}</span>
                   <span className="pdf-slash">/</span>
                   <span className="pdf-total-page">{String(numPages).padStart(2, '0')}</span>
                 </div>
+
+                {/* Next Page Button */}
+                <button
+                  type="button"
+                  className="pdf-popup-tool-btn"
+                  onClick={handleNextPage}
+                  disabled={visiblePage >= numPages}
+                  aria-label="Next Page"
+                  title="Next Page (↓)"
+                  style={{ opacity: visiblePage >= numPages ? 0.4 : 1 }}
+                >
+                  ›
+                </button>
 
                 {/* Subtle Divider */}
                 <span className="pdf-popup-ctrl-divider" aria-hidden="true" />
@@ -591,7 +690,7 @@ export default function PdfPopupViewer({
                 <button
                   type="button"
                   className="pdf-popup-tool-btn fit-btn"
-                  onClick={handleFitToWidth}
+                  onClick={() => fitWidthToContainer(firstPageDimensions)}
                   aria-label="Fit to width"
                   title="Fit to Width"
                 >

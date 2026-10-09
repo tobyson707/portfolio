@@ -7,8 +7,9 @@ import { useStore } from '../store'
 // Configure PDF.js Worker
 if (typeof window !== 'undefined') {
   try {
-    // Standard worker script matching pdfjs-dist version
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.0.379'}/pdf.worker.min.mjs`
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `${cleanBase}pdf.worker.min.mjs`
   } catch {
     // fallback
   }

@@ -7,7 +7,7 @@ import Env from './Env'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
 import { useStore } from '../store'
 import { heroModelManager, extendHeroLoader } from './heroModelManager'
-import { isMobileDevice } from '../utils/device'
+import { isMobileDevice, shouldUseMobilePerformanceMode } from '../utils/device'
 
 class ModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -211,7 +211,7 @@ function Man2({
   const get = useThree((s) => s.get)
   const { scene, animations } = useGLTF(
     `${import.meta.env.BASE_URL}models/tbxp.glb`,
-    'https://www.gstatic.com/draco/versioned/decoders/1.5.7/',
+    `${import.meta.env.BASE_URL}draco/gltf/`,
     true,
     extendHeroLoader
   )
@@ -567,21 +567,13 @@ function Man2({
     }
   })
 
-  // Cleanup cloned model geometries and materials on unmount to prevent WebGL GPU memory leaks
+  // Actions and animation mixer cleanup on unmount
   useEffect(() => {
     return () => {
-      model.traverse((o: any) => {
-        if (o.isMesh) {
-          o.geometry?.dispose?.()
-          if (Array.isArray(o.material)) {
-            o.material.forEach((m: any) => m?.dispose?.())
-          } else {
-            o.material?.dispose?.()
-          }
-        }
-      })
+      mixer.stopAllAction()
+      actions.current = []
     }
-  }, [model])
+  }, [mixer])
 
   return (
     <group
@@ -691,12 +683,13 @@ export default function Scene() {
   )
 }
 
-// Preload 3D hero model into memory cache to prevent duplicate fetches
-if (typeof window !== 'undefined') {
+// Preload 3D hero model into memory cache on capable devices to prevent duplicate fetches.
+// On constrained mobile devices (e.g. iPhone Safari), skip preload to prevent memory exhaustion.
+if (typeof window !== 'undefined' && !shouldUseMobilePerformanceMode()) {
   try {
     useGLTF.preload(
       `${import.meta.env.BASE_URL}models/tbxp.glb`,
-      'https://www.gstatic.com/draco/versioned/decoders/1.5.7/',
+      `${import.meta.env.BASE_URL}draco/gltf/`,
       true,
       extendHeroLoader
     )

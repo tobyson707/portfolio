@@ -1291,6 +1291,14 @@ canvas {
   font-weight: 700;
 }
 
+.wk-cue-text-desktop {
+  display: inline;
+}
+
+.wk-cue-text-mobile {
+  display: none;
+}
+
 [data-theme="dark"] .wk-scroll-cue-lead {
   color: rgba(255, 255, 255, 0.94);
 }
@@ -2016,40 +2024,50 @@ canvas {
   .wk-scroll-cue {
     top: 50%;
     bottom: auto;
-    right: max(20px, env(safe-area-inset-right, 20px));
+    right: clamp(16px, 4.5vw, 28px);
     transform: translateY(-50%);
     align-items: flex-end;
     text-align: right;
-    z-index: 10;
+    gap: 6px;
+    z-index: 6;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
+    /* Subtle localized dark gradient vignette behind instruction to ensure peak contrast */
+    background: radial-gradient(
+      ellipse 80% 80% at 85% 50%,
+      rgba(8, 8, 10, 0.65) 0%,
+      rgba(8, 8, 10, 0.40) 50%,
+      rgba(8, 8, 10, 0) 100%
+    );
+    padding: 12px 14px;
+    border-radius: 12px;
   }
   .wk-scroll-cue-inner {
-    display: flex;
-    flex-direction: column;
     align-items: flex-end;
-    gap: 6px;
+    gap: clamp(4px, 1.2vw, 8px);
   }
   .wk-scroll-cue-line {
-    font-size: clamp(14px, 3.8vw, 18px);
+    font-size: clamp(13px, 3.5vw, 15px);
     font-weight: 700;
-    line-height: 1.25;
-    letter-spacing: 0.08em;
-  }
-  [data-theme="dark"] .wk-scroll-cue-line {
-    color: rgba(255, 255, 255, 0.78);
+    line-height: 1.22;
+    letter-spacing: 0.09em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
   }
   .wk-scroll-cue-lead {
-    font-size: clamp(16px, 4.4vw, 21px);
+    font-size: clamp(15px, 4.2vw, 18px);
     font-weight: 800;
+    letter-spacing: 0.08em;
   }
-  [data-theme="dark"] .wk-scroll-cue-lead {
-    color: rgba(255, 255, 255, 0.98);
+  .wk-cue-text-desktop {
+    display: none;
   }
-  .wk-scroll-cue-arrow {
-    margin-left: 8px;
+  .wk-cue-text-mobile {
+    display: inline;
   }
   .wk-scroll-cue-arrow svg {
-    width: clamp(18px, 4.4vw, 22px);
-    height: clamp(18px, 4.4vw, 22px);
+    width: clamp(16px, 4.2vw, 20px);
+    height: clamp(16px, 4.2vw, 20px);
+    vertical-align: middle;
   }
 
   /* 作品行：窄屏下标题与右侧数据(播放量/榜单)改为上下排，标题在上、数据在下 */
@@ -5070,34 +5088,30 @@ canvas {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    cursor: pointer;
-    pointer-events: auto;
-    padding: 4px;
-    transition: transform 0.2s ease;
+    gap: 4px;
+    pointer-events: none;
+    user-select: none;
+    padding: 0;
   }
 
-  .hero-mobile-scroll-cue:active {
-    transform: translateY(2px);
-  }
-
-  .hero-mobile-scroll-cue .scroll-mouse-icon {
-    width: 20px;
-    height: 28px;
-    stroke-width: 1.8;
-    color: #FFFFFF;
-    animation: mouseBounce 2s ease-in-out infinite;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-  }
-
-  .hero-mobile-scroll-cue .scroll-cue-label {
+  .hero-mobile-swipe-label {
     font-family: var(--font-primary, 'Poppins', sans-serif);
     font-weight: 600;
     font-size: 9px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
     color: #E2DDD5;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
+    line-height: 1;
+    padding-left: 0.28em; /* Optically counter letter-spacing for true center */
+  }
+
+  .hero-mobile-chevron {
+    width: 11px;
+    height: 7px;
+    color: rgba(226, 221, 213, 0.78);
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+    transition: transform 0.2s ease;
   }
 }
 

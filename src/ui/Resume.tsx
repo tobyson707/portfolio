@@ -50,9 +50,7 @@ function Entry({ entry, index }: { entry: ResumeEntry; index: number }) {
     >
       <motion.span className="tl-dot" variants={itemV} aria-hidden="true" />
       <div className="tl-body">
-        <motion.div className="tl-period" variants={itemV}>
-          {entry.period}
-        </motion.div>
+        {/* entry.period is hidden per requirements */}
         <motion.div className="tl-head" variants={itemV}>
           <h3 className="tl-place">{entry.place}</h3>
         </motion.div>

@@ -747,17 +747,18 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
           <motion.div
             className="wk-scroll-cue"
             animate={{ opacity: isFirstCardEntering ? 0 : 1 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
+            transition={{ duration: 0.38, ease: [0.25, 0.1, 0.25, 1.0] }}
             style={{
               pointerEvents: isFirstCardEntering ? 'none' : 'auto',
             }}
-            aria-label="Don’t stop... keep scrolling"
+            aria-label="Don’t stop... keep swiping up"
             aria-hidden={isFirstCardEntering}
           >
             <div className="wk-scroll-cue-inner">
               <span className="wk-scroll-cue-line">DON’T STOP...</span>
               <span className="wk-scroll-cue-line wk-scroll-cue-lead">
-                KEEP SCROLLING
+                <span className="wk-cue-text-desktop">KEEP SCROLLING</span>
+                <span className="wk-cue-text-mobile">KEEP SWIPING UP</span>
                 <span className="wk-scroll-cue-arrow" aria-hidden="true">
                   <svg
                     width="18"

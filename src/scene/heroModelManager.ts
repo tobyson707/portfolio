@@ -177,6 +177,28 @@ class HeroModelManager {
   }
 
   /**
+   * Activates mobile performance mode, completing loading gracefully
+   * without creating or decoding heavy Three.js / Draco assets.
+   */
+  public markPerformanceModeReady() {
+    this.status = 'ready'
+    this.progress = 100
+    this.isReady = true
+    this.isFallback = true
+    this.hasRenderedFrame = true
+    try {
+      const store = useStore.getState()
+      store.setHeroModelProgress(100)
+      store.setHeroModelStatus('ready')
+      store.setHeroModelReady(true)
+      store.setFallbackActive(true)
+    } catch {
+      // ignore
+    }
+    this.notify()
+  }
+
+  /**
    * Allows recovery with the procedural crystalline fallback.
    */
   public proceedWithFallback() {
