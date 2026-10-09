@@ -17,6 +17,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('pdfjs-dist')) {
+            return 'pdfjs-vendor'
+          }
+          if (id.includes('node_modules/three') || id.includes('@react-three')) {
+            return 'three-vendor'
+          }
+          if (id.includes('framer-motion')) {
+            return 'framer-motion'
+          }
+        },
+      },
+    },
   },
 })

@@ -22,6 +22,7 @@ import { SITE_CONTENT } from '../data/siteContent'
 import { scrollToContact, scrollToWorks } from '../utils/scroll'
 import { useContentStore } from '../services/contentStore'
 import { trackWorkView } from '../services/analytics'
+import { isMobileDevice } from '../utils/device'
 import { useStore } from '../store'
 
 const EASE = [0.22, 1, 0.36, 1]
@@ -283,6 +284,17 @@ function WorkDetail({
   const isViewerOpen = selectedImageIndex !== null
   const closingNote = isIllustrationSection ? SUBCATEGORY_CLOSING_NOTES[activeCategory] || null : null
 
+  // On memory-constrained mobile devices, progressively load images in batches of 24 to prevent WebKit memory exhaustion
+  const isMobile = isMobileDevice()
+  const [visibleCount, setVisibleCount] = useState(() => (isMobile ? 24 : 1000))
+
+  useEffect(() => {
+    setVisibleCount(isMobile ? 24 : 1000)
+  }, [activeCategory, isMobile])
+
+  const displayedImages = isMobile ? images.slice(0, visibleCount) : images
+  const hasMoreImages = isMobile && visibleCount < images.length
+
   return (
     <>
       <motion.div
@@ -345,38 +357,55 @@ function WorkDetail({
           </header>
 
           {/* Pinterest-style dynamic masonry gallery */}
-          {images.length > 0 ? (
-            <div className="wk-masonry-gallery">
-              {images.map((image, idx) => (
-                <button
-                  className="wk-masonry-tile"
-                  key={image.id || image.src}
-                  type="button"
-                  aria-label="View artwork"
-                  onClick={() => setSelectedImageIndex(idx)}
-                  onContextMenu={(event) => event.preventDefault()}
-                >
-                  <div
-                    className="wk-masonry-media"
-                    style={{
-                      aspectRatio:
-                        image.width && image.height ? `${image.width} / ${image.height}` : undefined,
-                    }}
+          {displayedImages.length > 0 ? (
+            <>
+              <div className="wk-masonry-gallery">
+                {displayedImages.map((image, idx) => (
+                  <button
+                    className="wk-masonry-tile"
+                    key={image.id || image.src}
+                    type="button"
+                    aria-label="View artwork"
+                    onClick={() => setSelectedImageIndex(idx)}
+                    onContextMenu={(event) => event.preventDefault()}
                   >
-                    <img
-                      src={encodeURI(image.src)}
-                      alt=""
-                      className="wk-masonry-img"
-                      draggable={false}
-                      loading="lazy"
-                      onError={() => {
-                        reportMissingImage(image.src, image.category || item.name || 'Gallery')
+                    <div
+                      className="wk-masonry-media"
+                      style={{
+                        aspectRatio:
+                          image.width && image.height ? `${image.width} / ${image.height}` : undefined,
                       }}
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
+                    >
+                      <img
+                        src={encodeURI(image.src)}
+                        alt=""
+                        className="wk-masonry-img"
+                        draggable={false}
+                        loading="lazy"
+                        onError={() => {
+                          reportMissingImage(image.src, image.category || item.name || 'Gallery')
+                        }}
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {hasMoreImages && (
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '2rem 0' }}>
+                  <button
+                    type="button"
+                    className="wk-detail-filter-btn"
+                    style={{ padding: '10px 24px', fontSize: '0.85rem', cursor: 'pointer' }}
+                    onClick={() => setVisibleCount((prev) => prev + 24)}
+                  >
+                    <span className="wk-filter-name">
+                      LOAD MORE WORKS ({images.length - visibleCount} REMAINING)
+                    </span>
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="wk-masonry-empty">
               <p className="wk-masonry-empty-text">No works currently published in this category.</p>
@@ -575,13 +604,25 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
       if (e.key !== 'Escape') return
       // If ImageViewer is active, let it close first without closing category
       if (document.querySelector('.wk-viewer-root')) return
+      closeDetail()
+    }
+
+    const handlePopState = () => {
+      // If user swipes back or clicks browser back, dismiss the modal
+      if (document.querySelector('.wk-viewer-root')) {
+        // If image viewer open, it handles its own popstate or ESC
+        return
+      }
       setActive(null)
     }
+
     window.addEventListener('keydown', onKey)
+    window.addEventListener('popstate', handlePopState)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('popstate', handlePopState)
       document.body.style.overflow = prev
       useStore.getState().setIsModalOpen(false)
       useStore.getState().setSelectedCategory(null)
@@ -604,6 +645,14 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
   const openDetail = (item: WorkListItem) => {
     setActivePersonality(null)
     setActive(item)
+    if (typeof window !== 'undefined') {
+      try {
+        const hash = item.slug || (item as any).id || 'detail'
+        window.history.pushState({ modal: hash }, '', `#${hash}`)
+      } catch {
+        // ignore
+      }
+    }
     trackWorkView({
       workId: (item as any).id || (item.slug ? item.slug : item.name.toLowerCase().replace(/\s+/g, '-')),
       title: item.name,
@@ -614,6 +663,13 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
 
   const closeDetail = () => {
     setActive(null)
+    if (typeof window !== 'undefined' && window.location.hash) {
+      try {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      } catch {
+        // ignore
+      }
+    }
   }
 
   const handleHoverItem = useCallback((item: WorkListItem | null) => {
@@ -696,6 +752,7 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
               pointerEvents: isFirstCardEntering ? 'none' : 'auto',
             }}
             aria-label="Don’t stop... keep scrolling"
+            aria-hidden={isFirstCardEntering}
           >
             <div className="wk-scroll-cue-inner">
               <span className="wk-scroll-cue-line">DON’T STOP...</span>

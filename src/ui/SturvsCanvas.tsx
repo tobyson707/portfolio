@@ -297,20 +297,51 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
     }
   }, [setIsModalOpen])
 
+  // Push and sync history state so back gestures close canvas/viewer smoothly
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.location.hash.includes('sturvs')) {
+      try {
+        window.history.pushState({ modal: 'sturvs' }, '', '#sturvs')
+      } catch {
+        // ignore
+      }
+    }
+    return () => {
+      if (typeof window !== 'undefined' && window.location.hash.includes('sturvs')) {
+        try {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [])
+
   // Artwork selection: transition into focused fullscreen exhibit
   const handleArtworkClick = useCallback((artwork: SturvsArtwork) => {
     if (hasMovedPastThresholdRef.current || performance.now() < justDraggedUntilRef.current) {
       return // Dragged, avoid accidental click
     }
-    console.log(`STURVS artwork clicked: ${artwork.src}`)
     lastFocusedTriggerRef.current = (document.activeElement as HTMLElement) || null
     setSelectedArtwork(artwork)
-    console.log('STURVS viewer opened')
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({ modal: 'sturvs-viewer' }, '', '#sturvs-viewer')
+      } catch {
+        // ignore
+      }
+    }
   }, [])
 
   const handleCloseViewer = useCallback(() => {
     setSelectedArtwork(null)
-    console.log('STURVS viewer closed')
+    if (typeof window !== 'undefined' && window.location.hash.includes('viewer')) {
+      try {
+        window.history.replaceState({ modal: 'sturvs' }, '', '#sturvs')
+      } catch {
+        // ignore
+      }
+    }
     if (lastFocusedTriggerRef.current) {
       setTimeout(() => {
         lastFocusedTriggerRef.current?.focus()

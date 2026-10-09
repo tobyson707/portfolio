@@ -6,6 +6,8 @@ import * as THREE from 'three'
 import Env from './Env'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
 import { useStore } from '../store'
+import { heroModelManager, extendHeroLoader } from './heroModelManager'
+import { isMobileDevice } from '../utils/device'
 
 class ModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -13,12 +15,8 @@ class ModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; ch
     return { hasError: true };
   }
   componentDidCatch(error: Error, errorInfo: any) {
-    console.warn('[TOBI XP] 3D Model load error, switching to procedural fallback:', error, errorInfo);
-    try {
-      useStore.getState().setHeroModelReady(true);
-    } catch {
-      // ignore
-    }
+    console.error('[TOBI XP] 3D Model load error, switching to procedural fallback:', error, errorInfo);
+    heroModelManager.markModelError(error);
   }
   render() {
     if (this.state.hasError) {
@@ -29,16 +27,10 @@ class ModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; ch
 }
 
 function ManFallback() {
-  const setHeroModelReady = useStore((s) => s.setHeroModelReady)
   const groupRef = useRef<THREE.Group>(null)
   const innerRef = useRef<THREE.Mesh>(null)
 
-  useEffect(() => {
-    setHeroModelReady(true)
-  }, [setHeroModelReady])
-
   useFrame((state) => {
-    setHeroModelReady(true)
     if (groupRef.current) {
       const t = state.clock.getElapsedTime()
       groupRef.current.rotation.y = t * 0.3
@@ -137,28 +129,35 @@ function GradientBackground() {
 }
 
 // 3D Scene Lighting: HDRI Environment + Hemisphere + Key Directional Light
+// On mobile devices, bypass decoding the heavy 4MB float HDR to conserve GPU memory,
+// using a high-fidelity hemisphere + fill + ambient light combination instead.
 function Lights() {
+  const isMobile = isMobileDevice()
   const c = {
     envIntensity: 0.85,
-    hemiIntensity: 1.15,
+    hemiIntensity: isMobile ? 1.55 : 1.15,
     hemiSky: '#ffffff',
-    hemiGround: '#404040',
-    fillIntensity: 2.25,
+    hemiGround: '#3a3a3a',
+    fillIntensity: isMobile ? 2.65 : 2.25,
     fillColor: '#9fc6ff',
     fillPos: [-5, 4, -4] as [number, number, number],
+    ambientIntensity: isMobile ? 0.75 : 0,
   }
 
   return (
     <>
-      <Env
-        intensity={c.envIntensity}
-        rotationX={0}
-        rotationY={0}
-        rotationZ={0}
-        asBackground={false}
-        bgIntensity={0.4}
-        bgBlur={0}
-      />
+      {!isMobile && (
+        <Env
+          intensity={c.envIntensity}
+          rotationX={0}
+          rotationY={0}
+          rotationZ={0}
+          asBackground={false}
+          bgIntensity={0.4}
+          bgBlur={0}
+        />
+      )}
+      {isMobile && <ambientLight intensity={c.ambientIntensity} color="#ffffff" />}
       <hemisphereLight args={[c.hemiSky, c.hemiGround, c.hemiIntensity]} />
       <directionalLight position={c.fillPos} intensity={c.fillIntensity} color={c.fillColor} />
     </>
@@ -182,6 +181,9 @@ function Man2({
   const posZ = -0.7
   const scale = 2.25
   const rotationY = 0
+
+  // 移动端 / 触屏（无鼠标可跟随）：关闭眼睛跟随，眼睛保持默认朝向；同时优化阴影与计算。
+  const isMobile = useRef(isMobileDevice())
 
   // mobilePullback：移动端相机沿「焦点→相机」方向拉远的倍率（1 = 不变，1.2 = 远 20%）
   // mobileTimelineShift：移动端「时间轴阶段」相机水平位移，单位=视距占比（正=左移，负=右移，0=关）
@@ -207,23 +209,22 @@ function Man2({
   }
 
   const get = useThree((s) => s.get)
-  const setHeroModelReady = useStore((s) => s.setHeroModelReady)
   const { scene, animations } = useGLTF(
     `${import.meta.env.BASE_URL}models/tbxp.glb`,
-    'https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
+    'https://www.gstatic.com/draco/versioned/decoders/1.5.7/',
+    true,
+    extendHeroLoader
   )
 
-  useEffect(() => {
-    if (scene) {
-      const timer = requestAnimationFrame(() => {
-        setHeroModelReady(true)
-      })
-      return () => cancelAnimationFrame(timer)
-    }
-  }, [scene, setHeroModelReady])
-
+  const hasRenderedFirstFrameRef = useRef(false)
   useFrame(() => {
-    setHeroModelReady(true)
+    // Confirm the first rendered frame containing the model has executed
+    if (!hasRenderedFirstFrameRef.current && scene) {
+      hasRenderedFirstFrameRef.current = true
+      requestAnimationFrame(() => {
+        heroModelManager.markModelReady()
+      })
+    }
   })
 
   // 克隆模型；收集眼睛对象、聚焦锚点对象、glb 自带相机、各锚点景深开关
@@ -240,8 +241,8 @@ function Man2({
         o.parent?.remove(o)
       }
       if (o.isMesh) {
-        o.castShadow = true
-        o.receiveShadow = true
+        o.castShadow = !isMobile.current
+        o.receiveShadow = !isMobile.current
       }
       if (o.isCamera) glbCam = o
       // 首页锚点：兼容旧名 focus-start 与 intro3d 统一命名 focus-0
@@ -345,14 +346,7 @@ function Man2({
     return () => window.removeEventListener('mousemove', onMove)
   }, [])
 
-  // 移动端 / 触屏（无鼠标可跟随）：关闭眼睛跟随，眼睛保持默认朝向。
-  // 判定 = 触屏指针 或 窄视口（≤640px，与移动端样式断点一致）。
-  const isMobile = useRef(
-    typeof window !== 'undefined' &&
-      (window.matchMedia?.('(pointer: coarse)').matches === true ||
-        window.innerWidth <= 640)
-  )
-
+  // 移动端 / 触屏（无鼠标可跟随）：关闭眼睛跟随，眼睛保持默认朝向（使用前面初始化的 isMobile）。
   // 履历锚点 DOM 元素（决定当前播放到第几段）
   const anchorEls = useRef<any>(null)
   // 作品区画廊 DOM 元素（决定作品入场 / 横移阶段的帧）
@@ -573,6 +567,22 @@ function Man2({
     }
   })
 
+  // Cleanup cloned model geometries and materials on unmount to prevent WebGL GPU memory leaks
+  useEffect(() => {
+    return () => {
+      model.traverse((o: any) => {
+        if (o.isMesh) {
+          o.geometry?.dispose?.()
+          if (Array.isArray(o.material)) {
+            o.material.forEach((m: any) => m?.dispose?.())
+          } else {
+            o.material?.dispose?.()
+          }
+        }
+      })
+    }
+  }, [model])
+
   return (
     <group
       position={[posX, posY, posZ]}
@@ -655,6 +665,7 @@ function Post2({
 
 // 场景根组件：展示 me.glb（相机由 glb 动画 + 滚动驱动）
 export default function Scene() {
+  const isMobile = useRef(isMobileDevice())
   const focusRef = useRef(new THREE.Vector3(0, 1.3, 0))
   const frameRef = useRef(0)
   // 逐锚点景深（intro3d 导出的 glb 携带）：Man2 每帧写、Post2 读。dofBokeh=-1 表示无参数 → Post2 走旧全局混合。
@@ -671,7 +682,11 @@ export default function Scene() {
         </ModelErrorBoundary>
       </Suspense>
 
-      <Post2 focusRef={focusRef} frameRef={frameRef} dofBokehRef={dofBokehRef} dofRangeRef={dofRangeRef} />
+      {/* On mobile devices (especially iOS Safari), avoid heavy EffectComposer with multiple FBOs,
+          depth textures, mipmap blurs, and SMAA passes that exceed WebKit GPU memory ceilings */}
+      {!isMobile.current && (
+        <Post2 focusRef={focusRef} frameRef={frameRef} dofBokehRef={dofBokehRef} dofRangeRef={dofRangeRef} />
+      )}
     </>
   )
 }
@@ -681,7 +696,9 @@ if (typeof window !== 'undefined') {
   try {
     useGLTF.preload(
       `${import.meta.env.BASE_URL}models/tbxp.glb`,
-      'https://www.gstatic.com/draco/versioned/decoders/1.5.7/'
+      'https://www.gstatic.com/draco/versioned/decoders/1.5.7/',
+      true,
+      extendHeroLoader
     )
   } catch {
     // ignore preload errors

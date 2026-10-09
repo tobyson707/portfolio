@@ -20,6 +20,8 @@ export interface BrandProject {
   coverImage?: string
 }
 
+export type BrandCaseStudy = BrandProject
+
 export const BRAND_PROJECTS: BrandProject[] = [
   {
     id: 'logofolio',

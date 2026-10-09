@@ -97,7 +97,7 @@ export default function Contact({ content: _content }: { content?: ContactConten
     }
 
     setIsSubmitting(true)
-    trackContactInteraction('submit')
+    trackContactInteraction('form_submit')
 
     const subject = encodeURIComponent(`Project Inquiry — ${name.trim()}`)
     const body = encodeURIComponent(

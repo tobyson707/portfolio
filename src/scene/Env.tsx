@@ -3,6 +3,10 @@ import { useThree } from '@react-three/fiber'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import * as THREE from 'three'
 
+// Module-level cached texture singleton to avoid duplicate downloads and redundant GPU VRAM allocations
+let cachedTexture: THREE.Texture | null = null
+let activeUsersCount = 0
+
 // Robust environment map loader with error fallback to prevent crash on invalid HDR format
 export default function Env({
   intensity,
@@ -25,25 +29,66 @@ export default function Env({
   void bgBlur
 
   const scene = useThree((s) => s.scene)
-  const [texture, setTexture] = useState<THREE.Texture | null>(null)
+  const gl = useThree((s) => s.gl)
+  const [texture, setTexture] = useState<THREE.Texture | null>(() => cachedTexture)
+
+  // Invalidate cached texture if the WebGL context is lost
+  useEffect(() => {
+    const dom = gl?.domElement
+    if (!dom) return
+    const handleContextLost = () => {
+      console.warn('[Env] WebGL Context lost, resetting environment texture cache')
+      if (cachedTexture) {
+        try {
+          cachedTexture.dispose()
+        } catch {
+          // ignore
+        }
+        cachedTexture = null
+      }
+    }
+    dom.addEventListener('webglcontextlost', handleContextLost)
+    return () => dom.removeEventListener('webglcontextlost', handleContextLost)
+  }, [gl])
 
   useEffect(() => {
     let isMounted = true
+    activeUsersCount++
+
+    if (cachedTexture) {
+      setTexture(cachedTexture)
+      return () => {
+        activeUsersCount = Math.max(0, activeUsersCount - 1)
+        if (activeUsersCount === 0 && cachedTexture) {
+          cachedTexture.dispose()
+          cachedTexture = null
+        }
+      }
+    }
+
     const loader = new RGBELoader()
     loader.load(
       `${import.meta.env.BASE_URL}textures/env.hdr`,
       (tex) => {
-        if (!isMounted) return
         tex.mapping = THREE.EquirectangularReflectionMapping
-        setTexture(tex)
+        cachedTexture = tex
+        if (isMounted) {
+          setTexture(tex)
+        }
       },
       undefined,
       (err) => {
         console.warn('[Env] Failed to load env.hdr, using fallback lighting:', err)
       }
     )
+
     return () => {
       isMounted = false
+      activeUsersCount = Math.max(0, activeUsersCount - 1)
+      if (activeUsersCount === 0 && cachedTexture) {
+        cachedTexture.dispose()
+        cachedTexture = null
+      }
     }
   }, [])
 

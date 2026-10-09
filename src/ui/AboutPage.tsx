@@ -9,6 +9,7 @@ import {
   trackMediaInteraction,
   trackSocialClick,
 } from '../services/analytics'
+import { isMobileDevice } from '../utils/device'
 
 /**
  * Checks whether WebGL is safely supported by the browser/GPU.
@@ -147,15 +148,18 @@ function ExhibitionModelContent({ isMobile }: { isMobile: boolean }) {
     return clone
   }, [scene, isMobile])
 
-  // Cleanup cloned scene materials on unmount to prevent GPU memory leaks
+  // Cleanup cloned scene geometries and materials on unmount to prevent GPU memory leaks
   useEffect(() => {
     return () => {
       clonedScene.traverse((o: any) => {
-        if (o.isMesh && o.material) {
-          if (Array.isArray(o.material)) {
-            o.material.forEach((m: any) => m.dispose?.())
-          } else {
-            o.material.dispose?.()
+        if (o.isMesh) {
+          o.geometry?.dispose?.()
+          if (o.material) {
+            if (Array.isArray(o.material)) {
+              o.material.forEach((m: any) => m.dispose?.())
+            } else {
+              o.material.dispose?.()
+            }
           }
         }
       })
@@ -227,20 +231,18 @@ function About3DViewer({
   hasInteracted: boolean
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 960 : false
-  )
+  const [isMobile, setIsMobile] = useState(() => isMobileDevice())
   const [hasContextLost, setHasContextLost] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 960)
+      setIsMobile(isMobileDevice())
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  if (hasContextLost) {
+  if (hasContextLost || isMobile) {
     return <AboutCharacterFallback onInteract={onInteract} />
   }
 

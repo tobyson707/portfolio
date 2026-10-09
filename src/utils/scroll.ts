@@ -100,12 +100,12 @@ export function scrollToWorks(forcedBehavior?: ScrollBehavior) {
  * It uses the actual Contact panel and Works gallery DOM references to compute
  * the exact vertical scroll position required.
  */
-export function scrollToContact() {
+export function scrollToContact(forcedBehavior?: ScrollBehavior) {
   if (typeof window === 'undefined') return
 
   const prefersReducedMotion =
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  const behavior: ScrollBehavior = prefersReducedMotion ? 'instant' : 'smooth'
+  const behavior: ScrollBehavior = prefersReducedMotion ? 'instant' : (forcedBehavior || 'smooth')
 
   const contactEl = document.getElementById('contact')
   const galleryEl = document.querySelector('.wk-gallery') as HTMLElement | null

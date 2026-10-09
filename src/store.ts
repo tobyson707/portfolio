@@ -8,6 +8,10 @@ interface StoreState {
   currentView: 'home' | 'about' | '404'
   theme: 'light' | 'dark'
   heroModelReady: boolean
+  heroModelStatus: 'idle' | 'loading' | 'loaded' | 'ready' | 'error'
+  heroModelProgress: number
+  heroModelError: string | null
+  isFallbackActive: boolean
   isModalOpen: boolean
   isMenuOpen: boolean
   pendingScrollTarget: string | null
@@ -22,6 +26,9 @@ interface StoreState {
   toggleTheme: () => void
   setTheme: (theme: 'light' | 'dark') => void
   setHeroModelReady: (ready: boolean) => void
+  setHeroModelStatus: (status: 'idle' | 'loading' | 'loaded' | 'ready' | 'error', error?: string | null) => void
+  setHeroModelProgress: (progress: number) => void
+  setFallbackActive: (active: boolean) => void
   setIsModalOpen: (open: boolean) => void
   setIsMenuOpen: (open: boolean) => void
   setPendingScrollTarget: (target: string | null) => void
@@ -67,6 +74,10 @@ export const useStore = create<StoreState>((set) => ({
   currentView: 'home',
   theme: initialTheme,
   heroModelReady: false,
+  heroModelStatus: 'idle',
+  heroModelProgress: 0,
+  heroModelError: null,
+  isFallbackActive: false,
   isModalOpen: false,
   isMenuOpen: false,
   pendingScrollTarget: null,
@@ -89,6 +100,17 @@ export const useStore = create<StoreState>((set) => ({
     set({ theme })
   },
   setHeroModelReady: (ready) => set({ heroModelReady: ready }),
+  setHeroModelStatus: (status, error = null) =>
+    set((state) => ({
+      heroModelStatus: status,
+      heroModelError: error !== undefined ? error : state.heroModelError,
+      heroModelReady: status === 'ready' ? true : state.heroModelReady,
+    })),
+  setHeroModelProgress: (progress) =>
+    set((state) => ({
+      heroModelProgress: Math.max(state.heroModelProgress, progress),
+    })),
+  setFallbackActive: (active) => set({ isFallbackActive: active }),
   setIsModalOpen: (open) => set({ isModalOpen: open }),
   setIsMenuOpen: (open) => set({ isMenuOpen: open }),
   setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),

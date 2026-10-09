@@ -10,6 +10,10 @@ import {
   type AudioEngineListener,
   type AudioSection,
   type AudioEffectParams,
+  type AudioEnvironment,
+  SUBMERGED_PRESET,
+  SUBMERGED_CATEGORIES,
+  isSubmergedCategory,
 } from './audioEngine'
 
 export type AudioState = AudioEngineState

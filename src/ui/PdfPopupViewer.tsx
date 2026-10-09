@@ -157,6 +157,7 @@ const PdfPageItem = React.memo(function PdfPageItem({
         const renderContext = {
           canvasContext: ctx,
           viewport: renderViewport,
+          canvas: canvas,
         }
 
         const task = page.render(renderContext)

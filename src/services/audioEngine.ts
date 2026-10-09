@@ -270,11 +270,49 @@ export class AudioEngine {
     environment: 'DEFAULT',
   }
 
+  private wasPlayingBeforeHidden = false
+
   constructor() {
     if (typeof window !== 'undefined') {
       this.initFromStorage()
       this.initAudioElement()
+      this.initVisibilityListener()
     }
+  }
+
+  /**
+   * Automatically pauses / suspends audio when page is hidden or mobile phone is locked,
+   * and smoothly restores playback when page returns to view if previously playing.
+   */
+  private initVisibilityListener() {
+    if (typeof document === 'undefined') return
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (this.state.isPlaying && !this.state.isMuted) {
+          this.wasPlayingBeforeHidden = true
+          if (this.ctx && this.ctx.state === 'running') {
+            this.ctx.suspend().catch(() => {})
+          }
+          if (this.audio && !this.audio.paused) {
+            this.audio.pause()
+          }
+        }
+      } else {
+        if (this.wasPlayingBeforeHidden) {
+          this.wasPlayingBeforeHidden = false
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {})
+          }
+          if (this.audio && !this.state.isMuted) {
+            this.audio.play().catch(() => {})
+          }
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('pagehide', handleVisibility)
   }
 
   /**

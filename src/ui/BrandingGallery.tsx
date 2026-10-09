@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { motion } from 'framer-motion'
 import { BRAND_PROJECTS, type BrandProject } from '../data/brandIdentityManifest'
-import PdfPopupViewer from './PdfPopupViewer'
 import { useStore } from '../store'
+
+const PdfPopupViewer = lazy(() => import('./PdfPopupViewer'))
 
 const EASE = [0.22, 1, 0.36, 1]
 
@@ -97,13 +98,15 @@ export default function BrandingGallery({ onClose }: BrandingGalleryProps) {
         </article>
       </motion.div>
 
-      {/* PDF Popup Lightbox Viewer */}
+      {/* PDF Popup Lightbox Viewer (Dynamically Loaded) */}
       {selectedProject && (
-        <PdfPopupViewer
-          project={selectedProject}
-          isOpen={Boolean(selectedProject)}
-          onClose={() => setSelectedProject(null)}
-        />
+        <Suspense fallback={null}>
+          <PdfPopupViewer
+            project={selectedProject}
+            isOpen={Boolean(selectedProject)}
+            onClose={() => setSelectedProject(null)}
+          />
+        </Suspense>
       )}
     </>
   )

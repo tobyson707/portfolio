@@ -15,9 +15,11 @@ import NotFoundPage from './ui/NotFoundPage'
 import BackToTop from './ui/BackToTop'
 import { useStore } from './store'
 import { SITE_CONTENT } from './data/siteContent'
-import { scrollToWorks } from './utils/scroll'
+import { scrollToWorks, scrollToContact } from './utils/scroll'
 import { useContentStore } from './services/contentStore'
 import { useAudioEngineEffects } from './hooks/useAudioEngineEffects'
+import { heroModelManager } from './scene/heroModelManager'
+import { isMobileDevice } from './utils/device'
 import {
   initAnalytics,
   trackPageView,
@@ -34,9 +36,9 @@ class CanvasErrorBoundary extends React.Component<
     return { hasError: true }
   }
   componentDidCatch(error: Error, errorInfo: any) {
-    console.warn('[TOBI XP] 3D Canvas error caught by boundary:', error, errorInfo)
+    console.error('[TOBI XP] 3D Canvas error caught by boundary:', error, errorInfo)
     try {
-      useStore.getState().setHeroModelReady(true)
+      heroModelManager.markModelError(error)
     } catch {
       // ignore
     }
@@ -224,13 +226,11 @@ function HomeView() {
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
   const { scrollY } = useScroll()
 
-  const [isMobileScreen, setIsMobileScreen] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  )
+  const [isMobileScreen, setIsMobileScreen] = useState(() => isMobileDevice())
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileScreen(window.innerWidth <= 768)
+      setIsMobileScreen(isMobileDevice())
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -293,25 +293,39 @@ function HomeView() {
       transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
     >
 
-      {/* 固定的 3D 背景 (在移动端打开 About 时释放背景 WebGL 避免双 Context 竞争与 GPU 崩溃) */}
+      {/* 固定的 3D 背景 (在打开 About 时暂停渲染帧循环，避免不必要的 GPU 计算与移动端 WebGL 重复挂载崩溃) */}
       <div className="scene-bg">
         <CanvasErrorBoundary>
-          {!(isAboutOpen && isMobileScreen) ? (
-            <Canvas
-              frameloop={isAboutOpen ? 'never' : 'always'}
-              shadows={{ type: THREE.PCFShadowMap }}
-              dpr={[1, 1.5]}
-              camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
-              gl={{ alpha: true, antialias: false, stencil: false, depth: true, toneMapping: THREE.ACESFilmicToneMapping }}
-            >
-              <Suspense fallback={null}>
-                <Backdrop />
-                <Scene />
-              </Suspense>
-            </Canvas>
-          ) : (
-            <div className="canvas-fallback" />
-          )}
+          <Canvas
+            frameloop={isAboutOpen ? 'never' : 'always'}
+            shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
+            dpr={isMobileScreen ? 1 : [1, 1.5]}
+            camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
+            gl={{
+              alpha: true,
+              antialias: !isMobileScreen,
+              stencil: false,
+              depth: true,
+              powerPreference: isMobileScreen ? 'low-power' : 'default',
+              toneMapping: THREE.ACESFilmicToneMapping,
+            }}
+            onCreated={({ gl }) => {
+              const dom = gl.domElement
+              dom.addEventListener(
+                'webglcontextlost',
+                (e) => {
+                  e.preventDefault()
+                  console.warn('[TOBI XP] Background WebGL context lost handled')
+                },
+                false
+              )
+            }}
+          >
+            <Suspense fallback={null}>
+              <Backdrop />
+              <Scene />
+            </Suspense>
+          </Canvas>
         </CanvasErrorBoundary>
       </div>
 
@@ -369,13 +383,33 @@ function PublicPortfolio() {
   // Initialize analytics & check initial route
   useEffect(() => {
     initAnalytics()
-    const path = window.location.pathname
-    if (path === '/about' || path === '/about/') {
+    const rawPath = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/'
+    if (rawPath === '/about') {
       // Direct access or reload on /about: keep /about in URL and open About without hamburger menu
       useStore.getState().setCameFromHome(false)
       useStore.getState().setSavedHomeScrollY(0)
       setIsAboutOpen(true)
-    } else if (path && path !== '/' && path !== '/index.html') {
+    } else if (rawPath === '/' || rawPath === '/index.html') {
+      useStore.getState().setCurrentView('home')
+      setIsAboutOpen(false)
+    } else if (rawPath === '/works' || rawPath === '/illustrations' || rawPath === '/designs') {
+      useStore.getState().setCurrentView('home')
+      setIsAboutOpen(false)
+      useStore.getState().setPendingScrollTarget('works')
+    } else if (rawPath === '/resume') {
+      useStore.getState().setCurrentView('home')
+      setIsAboutOpen(false)
+      setTimeout(() => {
+        const el = document.getElementById('resume')
+        el?.scrollIntoView({ behavior: 'smooth' })
+      }, 500)
+    } else if (rawPath === '/contact') {
+      useStore.getState().setCurrentView('home')
+      setIsAboutOpen(false)
+      setTimeout(() => {
+        scrollToContact('smooth')
+      }, 500)
+    } else {
       useStore.getState().setCurrentView('404')
     }
   }, [setIsAboutOpen])
@@ -383,16 +417,29 @@ function PublicPortfolio() {
   // Support browser Back and Forward navigation smoothly
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      const path = window.location.pathname
-      if (path === '/about' || path === '/about/') {
+      const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/'
+      if (path === '/about') {
         setIsAboutOpen(true)
-      } else if (path === '/' || path === '/index.html') {
+      } else if (
+        path === '/' ||
+        path === '/index.html' ||
+        path === '/works' ||
+        path === '/illustrations' ||
+        path === '/designs' ||
+        path === '/resume' ||
+        path === '/contact'
+      ) {
         setIsAboutOpen(false)
-        const state = e.state as { fromHome?: boolean } | null
+        useStore.getState().setCurrentView('home')
+        const state = e.state as { fromHome?: boolean; target?: string } | null
         const came = useStore.getState().cameFromHome || Boolean(state?.fromHome)
         const savedY = useStore.getState().savedHomeScrollY
         if (came && savedY > 0) {
           window.scrollTo({ top: savedY, behavior: 'instant' })
+        } else if (path === '/works' || path === '/illustrations' || path === '/designs') {
+          scrollToWorks('smooth')
+        } else if (path === '/contact') {
+          scrollToContact('smooth')
         } else {
           window.scrollTo({ top: 0, behavior: 'instant' })
         }

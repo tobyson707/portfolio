@@ -1,100 +1,130 @@
-import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useProgress } from '@react-three/drei';
-import { useStore } from '../store';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { useProgress, useGLTF } from '@react-three/drei'
+import { useStore } from '../store'
+import { heroModelManager } from '../scene/heroModelManager'
 
 type LoadingScreenProps = {
-  onComplete?: () => void;
-};
+  onComplete?: () => void
+}
 
-type LoadingState = 'LOADING' | 'COMPLETE' | 'EXITING';
+type LoadingState = 'LOADING' | 'COMPLETE' | 'EXITING'
 
-const getLoadingMessage = (progress: number) => {
-  if (progress >= 100) return "alright, let's go.";
-  if (progress >= 81) return "okay, we're getting somewhere";
-  if (progress >= 61) return "almost there";
-  if (progress >= 41) return "putting some things together";
-  if (progress >= 21) return "getting things ready";
+const getLoadingMessage = (progress: number, status: string, error?: string | null) => {
+  if (status === 'error') return error ? `character load issue: ${error.toLowerCase()}` : '3d character could not be loaded'
+  if (progress >= 100) return "alright, let's go."
+  if (progress >= 85) return "okay, we're getting somewhere"
+  if (progress >= 60) return 'almost there'
+  if (progress >= 40) return 'putting some things together'
+  if (progress >= 20) return 'getting things ready'
 
-  return "okay, give me a second...";
-};
+  return 'okay, give me a second...'
+}
 
 export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
-  const { progress, active, errors, loaded, total } = useProgress();
-  const enter = useStore((s) => s.enter);
-  const heroModelReady = useStore((s) => s.heroModelReady);
-  const theme = useStore((s) => s.theme);
+  const enter = useStore((s) => s.enter)
+  const entered = useStore((s) => s.entered)
+  const heroModelReady = useStore((s) => s.heroModelReady)
+  const heroModelStatus = useStore((s) => s.heroModelStatus)
+  const heroModelProgress = useStore((s) => s.heroModelProgress)
+  const heroModelError = useStore((s) => s.heroModelError)
+  const theme = useStore((s) => s.theme)
 
-  const [loadingState, setLoadingState] = useState<LoadingState>('LOADING');
-  const [isRemoved, setIsRemoved] = useState(false);
+  // Drei useProgress tracks all Three.js DefaultLoadingManager items (e.g. env.hdr)
+  const { progress: dreiProgress, errors: dreiErrors } = useProgress()
 
-  // Normalize progress to integer [0, 100]
-  const normalizedProgress = Math.min(
-    100,
-    Math.max(0, Math.round(Number.isFinite(progress) ? progress : 0))
-  );
+  const [loadingState, setLoadingState] = useState<LoadingState>('LOADING')
+  const [isRemoved, setIsRemoved] = useState(() => entered)
+  const [progressValue, setProgressValue] = useState(0)
+  const hasTriggeredCompleteRef = useRef(false)
 
-  // Once complete, always lock display at 100%
-  const displayProgress = loadingState === 'LOADING' ? normalizedProgress : 100;
+  // Calculate genuine progress percentage:
+  // - While model is loading/parsing, reflects real byte progress up to 94%
+  // - 100% is REACHED ONLY when heroModelReady is true (model loaded, mounted, and first frame rendered)
+  // - In error state, does not reach 100%
+  useEffect(() => {
+    if (loadingState !== 'LOADING') return
+
+    if (heroModelReady && heroModelStatus === 'ready') {
+      setProgressValue(100)
+      return
+    }
+
+    if (heroModelStatus === 'error') {
+      // Keep at whatever was loaded without claiming completion
+      setProgressValue((prev) => Math.min(prev, 90))
+      return
+    }
+
+    // Measure genuine progress from actual model download events
+    const modelPct = heroModelProgress || 0
+    const envPct = Number.isFinite(dreiProgress) ? Math.min(dreiProgress, 90) : 0
+    const currentGenuine = Math.max(modelPct, envPct)
+
+    // Cap at 94% until WebGL renderer confirms the first drawn frame containing the character
+    const capped = Math.min(94, Math.max(0, Math.round(currentGenuine)))
+    setProgressValue((prev) => Math.max(prev, capped))
+  }, [heroModelReady, heroModelStatus, heroModelProgress, dreiProgress, loadingState])
+
+  const displayProgress = loadingState === 'LOADING' ? progressValue : 100
 
   const message = useMemo(
-    () => getLoadingMessage(displayProgress),
-    [displayProgress]
-  );
+    () => getLoadingMessage(displayProgress, heroModelStatus, heroModelError),
+    [displayProgress, heroModelStatus, heroModelError]
+  )
 
-  // Gracefully log any asset loading errors
+  // Gracefully log any asset loading errors in development
   useEffect(() => {
-    if (errors.length > 0) {
-      console.warn('[TOBI XP] Asset loading errors:', errors);
+    if (dreiErrors.length > 0) {
+      console.warn('[TOBI XP] Three.js asset loading notices:', dreiErrors)
     }
-  }, [errors]);
+  }, [dreiErrors])
 
-  // Progression & Completion detection
+  // Completion detection:
+  // Reaches COMPLETE only when the 3D model is confirmed loaded, scene-mounted, and rendered
   useEffect(() => {
-    if (loadingState !== 'LOADING') return;
+    if (loadingState !== 'LOADING') return
 
-    // Standard completion (100%), cached completion (!active and loaded >= total),
-    // zero-asset / instant load (!active && total === 0), or non-blocking error completion
-    // MUST also require heroModelReady (Hero 3D model loaded, added to scene, mounted, and rendered)
-    const isFinished =
-      (normalizedProgress >= 100 ||
-       (!active && total > 0 && loaded >= total) ||
-       (!active && total === 0 && progress >= 100) ||
-       (!active && errors.length > 0)) &&
-      heroModelReady;
-
-    if (isFinished) {
-      setLoadingState('COMPLETE');
+    if (heroModelReady && heroModelStatus === 'ready' && !hasTriggeredCompleteRef.current) {
+      hasTriggeredCompleteRef.current = true
+      setProgressValue(100)
+      setLoadingState('COMPLETE')
     }
-  }, [normalizedProgress, active, loaded, total, progress, errors, loadingState, heroModelReady]);
+  }, [heroModelReady, heroModelStatus, loadingState])
 
-  // Safety fallback: prevent the portfolio from ever remaining permanently stuck
+  // Safety fallback: prevents the portfolio from ever remaining permanently stuck
   useEffect(() => {
-    if (loadingState !== 'LOADING') return;
+    if (loadingState !== 'LOADING') return
 
     const safetyTimer = setTimeout(() => {
-      console.info('[TOBI XP] Loading safety fallback triggered');
-      setLoadingState('COMPLETE');
-    }, 8000);
+      console.info('[TOBI XP] Loading safety timer triggered')
+      if (heroModelStatus === 'error') {
+        heroModelManager.proceedWithFallback()
+      } else {
+        heroModelManager.markModelReady()
+      }
+      setProgressValue(100)
+      setLoadingState('COMPLETE')
+    }, 9000)
 
-    return () => clearTimeout(safetyTimer);
-  }, [loadingState]);
+    return () => clearTimeout(safetyTimer)
+  }, [loadingState, heroModelStatus])
 
   // Hold completed state briefly so the user sees 100% and "alright, let's go.",
-  // synchronizing with R3F render frame before starting the curtain slide
+  // before smoothly sliding up the loading curtain
   useEffect(() => {
-    if (loadingState !== 'COMPLETE') return;
+    if (loadingState !== 'COMPLETE') return
 
     const holdTimer = setTimeout(() => {
       const frame = requestAnimationFrame(() => {
-        setLoadingState('EXITING');
-        enter();
-      });
-      return () => cancelAnimationFrame(frame);
-    }, 450);
+        setLoadingState('EXITING')
+        enter()
+      })
+      return () => cancelAnimationFrame(frame)
+    }, 420)
 
-    return () => clearTimeout(holdTimer);
-  }, [loadingState, enter]);
+    return () => clearTimeout(holdTimer)
+  }, [loadingState, enter])
 
   // Lock body scroll while loading screen is active, restore upon exit
   useEffect(() => {
@@ -107,7 +137,25 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
     }
   }, [loadingState])
 
-  if (isRemoved) return null;
+  const handleProceedFallback = useCallback(() => {
+    heroModelManager.proceedWithFallback()
+    setProgressValue(100)
+    setLoadingState('COMPLETE')
+  }, [])
+
+  const handleRetry = useCallback(() => {
+    try {
+      useGLTF.clear(`${import.meta.env.BASE_URL}models/tbxp.glb`)
+    } catch {
+      // ignore
+    }
+    heroModelManager.retry()
+    setProgressValue(0)
+    setLoadingState('LOADING')
+    hasTriggeredCompleteRef.current = false
+  }, [])
+
+  if (isRemoved || entered) return null
 
   return (
     <motion.div
@@ -126,8 +174,8 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       }}
       onAnimationComplete={() => {
         if (loadingState === 'EXITING') {
-          setIsRemoved(true);
-          onComplete?.();
+          setIsRemoved(true)
+          onComplete?.()
         }
       }}
     >
@@ -157,6 +205,24 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
             aria-live="polite"
           >
             {message}
+            {heroModelStatus === 'error' && (
+              <div className="loading-screen__fallback-actions">
+                <button
+                  type="button"
+                  className="loading-screen__fallback-btn"
+                  onClick={handleProceedFallback}
+                >
+                  Continue with fallback
+                </button>
+                <button
+                  type="button"
+                  className="loading-screen__fallback-btn"
+                  onClick={handleRetry}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -181,5 +247,5 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         </div>
       </div>
     </motion.div>
-  );
+  )
 }

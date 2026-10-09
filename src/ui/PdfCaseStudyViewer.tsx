@@ -36,6 +36,7 @@ export default function PdfCaseStudyViewer({
   const [viewMode, setViewMode] = useState<ViewMode>('continuous')
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [, setPageRendering] = useState<boolean>(false)
 
   // Canvas refs for pages
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map())
@@ -140,6 +141,7 @@ export default function PdfCaseStudyViewer({
         const renderContext = {
           canvasContext: ctx,
           viewport: page.getViewport({ scale: scale * dpr }),
+          canvas: canvas,
         }
 
         const renderTask = page.render(renderContext)
