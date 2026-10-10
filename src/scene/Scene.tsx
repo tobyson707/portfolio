@@ -7,7 +7,7 @@ import Env from './Env'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
 import { useStore } from '../store'
 import { heroModelManager, extendHeroLoader } from './heroModelManager'
-import { isMobileDevice, shouldUseMobilePerformanceMode } from '../utils/device'
+import { isMobileDevice } from '../utils/device'
 
 class ModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -683,9 +683,8 @@ export default function Scene() {
   )
 }
 
-// Preload 3D hero model into memory cache on capable devices to prevent duplicate fetches.
-// On constrained mobile devices (e.g. iPhone Safari), skip preload to prevent memory exhaustion.
-if (typeof window !== 'undefined' && !shouldUseMobilePerformanceMode()) {
+// Preload 3D hero model into memory cache across all devices to prevent duplicate fetches.
+if (typeof window !== 'undefined') {
   try {
     useGLTF.preload(
       `${import.meta.env.BASE_URL}models/tbxp.glb`,

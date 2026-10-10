@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react'
+import React, { Suspense, useRef, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion, type MotionValue } from 'framer-motion'
 import * as THREE from 'three'
@@ -19,8 +19,7 @@ import { scrollToWorks, scrollToContact } from './utils/scroll'
 import { useContentStore } from './services/contentStore'
 import { useAudioEngineEffects } from './hooks/useAudioEngineEffects'
 import { heroModelManager } from './scene/heroModelManager'
-import { isMobileDevice, shouldUseMobilePerformanceMode } from './utils/device'
-import HeroCharacterFallback from './scene/HeroCharacterFallback'
+import { isMobileDevice, getSafeDpr } from './utils/device'
 import {
   initAnalytics,
   trackPageView,
@@ -232,13 +231,6 @@ function HomeView() {
   const { scrollY } = useScroll()
 
   const [isMobileScreen, setIsMobileScreen] = useState(() => isMobileDevice())
-  const isPerformanceMode = useMemo(() => shouldUseMobilePerformanceMode(), [])
-
-  useEffect(() => {
-    if (isPerformanceMode) {
-      heroModelManager.markPerformanceModeReady()
-    }
-  }, [isPerformanceMode])
 
   useEffect(() => {
     const handleResize = () => {
@@ -305,44 +297,40 @@ function HomeView() {
       transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
     >
 
-      {/* 固定的背景：移动端性能模式或受限环境下使用轻量级角色视觉，避免 iOS Safari 内存耗尽与崩溃 */}
+      {/* 固定的背景：统一渲染高质量 3D 场景，并在移动端应用安全 DPR 与着色设置 */}
       <div className="scene-bg">
-        {isPerformanceMode ? (
-          <HeroCharacterFallback />
-        ) : (
-          <CanvasErrorBoundary fallback={<HeroCharacterFallback />}>
-            <Canvas
-              frameloop={isAboutOpen ? 'never' : 'always'}
-              shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
-              dpr={isMobileScreen ? 1 : [1, 1.5]}
-              camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
-              gl={{
-                alpha: true,
-                antialias: !isMobileScreen,
-                stencil: false,
-                depth: true,
-                powerPreference: isMobileScreen ? 'low-power' : 'default',
-                toneMapping: THREE.ACESFilmicToneMapping,
-              }}
-              onCreated={({ gl }) => {
-                const dom = gl.domElement
-                dom.addEventListener(
-                  'webglcontextlost',
-                  (e) => {
-                    e.preventDefault()
-                    console.warn('[TOBI XP] Background WebGL context lost handled')
-                  },
-                  false
-                )
-              }}
-            >
-              <Suspense fallback={null}>
-                <Backdrop />
-                <Scene />
-              </Suspense>
-            </Canvas>
-          </CanvasErrorBoundary>
-        )}
+        <CanvasErrorBoundary>
+          <Canvas
+            frameloop={isAboutOpen ? 'never' : 'always'}
+            shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
+            dpr={getSafeDpr()}
+            camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
+            gl={{
+              alpha: true,
+              antialias: !isMobileScreen,
+              stencil: false,
+              depth: true,
+              powerPreference: isMobileScreen ? 'low-power' : 'default',
+              toneMapping: THREE.ACESFilmicToneMapping,
+            }}
+            onCreated={({ gl }) => {
+              const dom = gl.domElement
+              dom.addEventListener(
+                'webglcontextlost',
+                (e) => {
+                  e.preventDefault()
+                  console.warn('[TOBI XP] Background WebGL context lost handled')
+                },
+                false
+              )
+            }}
+          >
+            <Suspense fallback={null}>
+              <Backdrop />
+              <Scene />
+            </Suspense>
+          </Canvas>
+        </CanvasErrorBoundary>
       </div>
 
       {/* 滚动渐暗蒙层 */}
