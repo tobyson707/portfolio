@@ -15,6 +15,16 @@ class HeroModelManager {
   private isReady: boolean = false
   private isFallback: boolean = false
   private hasRenderedFrame: boolean = false
+
+  // Environment readiness tracking
+  private envStatus: 'idle' | 'loading' | 'loaded' | 'ready' | 'error' = 'idle'
+  private envProgress: number = 0
+  private envError: string | null = null
+  private isEnvReady: boolean = false
+
+  // Model readiness tracking
+  private isModelLoaded: boolean = false
+
   private registeredLoaders = new WeakSet<GLTFLoader>()
   private listeners: Array<() => void> = []
 
@@ -22,9 +32,12 @@ class HeroModelManager {
     // Sync initial state with store
     if (typeof window !== 'undefined') {
       const state = useStore.getState()
-      this.isReady = state.heroModelReady
+      this.isReady = state.heroModelReady && (state.heroEnvReady ?? false)
       this.status = state.heroModelStatus || 'idle'
       this.progress = state.heroModelProgress || 0
+      this.isEnvReady = state.heroEnvReady ?? false
+      this.envStatus = state.heroEnvStatus ?? 'idle'
+      this.envProgress = state.heroEnvProgress ?? 0
     }
   }
 
@@ -46,6 +59,22 @@ class HeroModelManager {
 
   public getIsFallback() {
     return this.isFallback
+  }
+
+  public getEnvStatus() {
+    return this.envStatus
+  }
+
+  public getEnvProgress() {
+    return this.envProgress
+  }
+
+  public getEnvError() {
+    return this.envError
+  }
+
+  public getIsEnvReady() {
+    return this.isEnvReady
   }
 
   /**
@@ -126,29 +155,124 @@ class HeroModelManager {
   }
 
   /**
-   * Called by the 3D Scene / Man2 component once:
-   * 1. The model has loaded and cloned successfully
-   * 2. Materials and textures are initialized
-   * 3. Model is added to the scene graph
-   * 4. The WebGL renderer has executed the first rendered frame containing the character
+   * Called when the 3D model asset has downloaded, parsed, and cloned into the scene.
    */
-  public markModelReady() {
+  public markModelLoaded() {
+    this.isModelLoaded = true
+    if (this.status !== 'ready') {
+      this.setStatus('loaded')
+      this.setProgress(94)
+    }
+    this.notify()
+  }
+
+  /**
+   * Progress update for environment HDR loading and PMREM processing.
+   */
+  public setEnvProgress(pct: number) {
+    const normalized = Math.min(100, Math.max(this.envProgress, Math.round(pct)))
+    if (normalized === this.envProgress) return
+    this.envProgress = normalized
+    try {
+      useStore.getState().setHeroEnvProgress(normalized)
+    } catch {
+      // ignore
+    }
+    this.notify()
+  }
+
+  /**
+   * Status update for environment map loading and PMREM generation.
+   */
+  public setEnvStatus(status: 'idle' | 'loading' | 'loaded' | 'ready' | 'error', error: string | null = null) {
+    this.envStatus = status
+    this.envError = error
+    if (status === 'ready') {
+      this.isEnvReady = true
+      this.envProgress = 100
+    }
+    try {
+      useStore.getState().setHeroEnvStatus(status, error)
+      if (status === 'ready') {
+        useStore.getState().setHeroEnvReady(true)
+        useStore.getState().setHeroEnvProgress(100)
+      }
+    } catch {
+      // ignore
+    }
+    this.notify()
+  }
+
+  /**
+   * Called when the complete lighting environment (HDR + PMREM prefiltering)
+   * is successfully generated and bound to scene.environment.
+   */
+  public markEnvReady() {
+    this.isEnvReady = true
+    this.setEnvStatus('ready')
+  }
+
+  /**
+   * Called when environment loading or PMREM generation fails.
+   */
+  public markEnvError(error: any) {
+    const errorMsg = error instanceof Error ? error.message : String(error || 'Environment loading error')
+    console.error('[TOBI XP] Lighting environment failed to load:', error)
+    this.isEnvReady = false
+    this.setEnvStatus('error', errorMsg)
+  }
+
+  /**
+   * Authoritative confirmation that the complete hero scene (model + lighting environment)
+   * has successfully rendered at least one frame in the WebGL renderer.
+   * Can ONLY succeed when BOTH model and environment are completely ready.
+   */
+  public markSceneRendered(hasModel: boolean, hasEnvironment: boolean) {
+    if (!hasModel || !hasEnvironment) {
+      console.warn(
+        `[TOBI XP] Scene rendered frame check deferred: modelReady=${hasModel}, envReady=${hasEnvironment}`
+      )
+      return
+    }
+
     if (this.isReady) return
     this.isReady = true
     this.hasRenderedFrame = true
+    this.isModelLoaded = true
+    this.isEnvReady = true
     this.setStatus('ready')
     this.setProgress(100)
+    this.setEnvStatus('ready')
 
     try {
       const store = useStore.getState()
       store.setHeroModelReady(true)
       store.setHeroModelStatus('ready')
       store.setHeroModelProgress(100)
+      store.setHeroEnvReady(true)
+      store.setHeroEnvStatus('ready')
+      store.setHeroEnvProgress(100)
     } catch {
       // ignore
     }
 
     this.notify()
+  }
+
+  /**
+   * Retained for compatibility with legacy scene callbacks:
+   * Only transitions to ready if environment is also confirmed ready.
+   */
+  public markModelReady() {
+    this.isModelLoaded = true
+    if (this.isEnvReady) {
+      this.markSceneRendered(true, true)
+    } else {
+      if (this.status !== 'ready') {
+        this.setStatus('loaded')
+        this.setProgress(94)
+      }
+    }
   }
 
   /**
@@ -175,7 +299,7 @@ class HeroModelManager {
   }
 
   /**
-   * Reset state for retry with the original hero model
+   * Reset state for retry with the original hero model and original environment
    */
   public retry() {
     this.status = 'loading'
@@ -184,12 +308,21 @@ class HeroModelManager {
     this.isReady = false
     this.isFallback = false
     this.hasRenderedFrame = false
+    this.isModelLoaded = false
+
+    this.envStatus = 'loading'
+    this.envProgress = 0
+    this.envError = null
+    this.isEnvReady = false
 
     try {
       const store = useStore.getState()
       store.setHeroModelStatus('loading', null)
       store.setHeroModelProgress(0)
       store.setHeroModelReady(false)
+      store.setHeroEnvStatus('loading', null)
+      store.setHeroEnvProgress(0)
+      store.setHeroEnvReady(false)
     } catch {
       // ignore
     }

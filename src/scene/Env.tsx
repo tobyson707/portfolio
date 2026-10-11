@@ -2,12 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import * as THREE from 'three'
+import { heroModelManager } from './heroModelManager'
 
-// Module-level cached texture singleton to avoid duplicate downloads and redundant GPU VRAM allocations
-let cachedTexture: THREE.Texture | null = null
+// Module-level cached prefiltered environment map singleton to prevent redundant GPU allocations
+let cachedEnvMap: THREE.Texture | null = null
 let activeUsersCount = 0
 
-// Robust environment map loader with error fallback to prevent crash on invalid HDR format
+/**
+ * Strict Environment Map Loader & Pre-filtered Mipmapped Radiance Environment Map (PMREM) Generator.
+ * 
+ * Mandatory hero lighting dependency:
+ * 1. Downloads original env.hdr with real byte progress reporting
+ * 2. Decodes 32-bit floating point HDR data
+ * 3. Uses WebGLRenderer PMREMGenerator to produce prefiltered mipmapped radiance texture
+ * 4. Binds to scene.environment and scene.environmentIntensity
+ * 5. Notifies heroModelManager upon completion, without any fallback or silent downgrade
+ */
 export default function Env({
   intensity,
   rotationX,
@@ -30,7 +40,7 @@ export default function Env({
 
   const scene = useThree((s) => s.scene)
   const gl = useThree((s) => s.gl)
-  const [texture, setTexture] = useState<THREE.Texture | null>(() => cachedTexture)
+  const [texture, setTexture] = useState<THREE.Texture | null>(() => cachedEnvMap)
 
   // Invalidate cached texture if the WebGL context is lost
   useEffect(() => {
@@ -38,14 +48,15 @@ export default function Env({
     if (!dom) return
     const handleContextLost = () => {
       console.warn('[Env] WebGL Context lost, resetting environment texture cache')
-      if (cachedTexture) {
+      if (cachedEnvMap) {
         try {
-          cachedTexture.dispose()
+          cachedEnvMap.dispose()
         } catch {
           // ignore
         }
-        cachedTexture = null
+        cachedEnvMap = null
       }
+      heroModelManager.setEnvStatus('loading')
     }
     dom.addEventListener('webglcontextlost', handleContextLost)
     return () => dom.removeEventListener('webglcontextlost', handleContextLost)
@@ -55,42 +66,76 @@ export default function Env({
     let isMounted = true
     activeUsersCount++
 
-    if (cachedTexture) {
-      setTexture(cachedTexture)
+    if (cachedEnvMap) {
+      setTexture(cachedEnvMap)
+      heroModelManager.markEnvReady()
       return () => {
         activeUsersCount = Math.max(0, activeUsersCount - 1)
-        if (activeUsersCount === 0 && cachedTexture) {
-          cachedTexture.dispose()
-          cachedTexture = null
+        if (activeUsersCount === 0 && cachedEnvMap) {
+          cachedEnvMap.dispose()
+          cachedEnvMap = null
         }
       }
     }
 
+    heroModelManager.setEnvStatus('loading')
+
     const loader = new RGBELoader()
+    loader.setDataType(THREE.HalfFloatType)
+
     loader.load(
       `${import.meta.env.BASE_URL}textures/env.hdr`,
-      (tex) => {
-        tex.mapping = THREE.EquirectangularReflectionMapping
-        cachedTexture = tex
-        if (isMounted) {
-          setTexture(tex)
+      (hdrTexture) => {
+        if (!isMounted) {
+          hdrTexture.dispose()
+          return
+        }
+
+        try {
+          heroModelManager.setEnvProgress(92)
+          // Generate PMREM for accurate PBR specular reflections and diffuse irradiance
+          const pmremGenerator = new THREE.PMREMGenerator(gl)
+          pmremGenerator.compileEquirectangularShader()
+
+          const renderTarget = pmremGenerator.fromEquirectangular(hdrTexture)
+          const envMap = renderTarget.texture
+
+          // Dispose source equirectangular texture and generator to free memory
+          hdrTexture.dispose()
+          pmremGenerator.dispose()
+
+          cachedEnvMap = envMap
+          setTexture(envMap)
+
+          // Mark environment completely ready and decoded on GPU
+          heroModelManager.markEnvReady()
+        } catch (err) {
+          console.error('[Env] Failed to generate PMREM from env.hdr:', err)
+          heroModelManager.markEnvError(err)
         }
       },
-      undefined,
-      (err) => {
-        console.warn('[Env] Failed to load env.hdr, using fallback lighting:', err)
+      (event: ProgressEvent) => {
+        if (event.lengthComputable && event.total > 0) {
+          // Map download bytes to 0..90%
+          const pct = Math.min(90, Math.max(1, Math.round((event.loaded / event.total) * 90)))
+          heroModelManager.setEnvProgress(pct)
+        }
+      },
+      (err: any) => {
+        console.error('[Env] Failed to load env.hdr:', err)
+        heroModelManager.markEnvError(err)
       }
     )
 
     return () => {
       isMounted = false
       activeUsersCount = Math.max(0, activeUsersCount - 1)
-      if (activeUsersCount === 0 && cachedTexture) {
-        cachedTexture.dispose()
-        cachedTexture = null
+      if (activeUsersCount === 0 && cachedEnvMap) {
+        cachedEnvMap.dispose()
+        cachedEnvMap = null
       }
     }
-  }, [])
+  }, [gl])
 
   const initialBg = useRef<any>(null)
   useEffect(() => {

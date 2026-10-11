@@ -86,8 +86,7 @@ function GradientBackground() {
 }
 
 // 3D Scene Lighting: HDRI Environment + Hemisphere + Key Directional Light
-// On mobile devices, bypass decoding the heavy 4MB float HDR to conserve GPU memory,
-// using a high-fidelity hemisphere + fill + ambient light combination instead.
+// Mandatory lighting environment on all devices (Desktop, Tablet, Mobile).
 function Lights() {
   const isMobile = isMobileDevice()
   const c = {
@@ -98,23 +97,19 @@ function Lights() {
     fillIntensity: isMobile ? 2.65 : 2.25,
     fillColor: '#9fc6ff',
     fillPos: [-5, 4, -4] as [number, number, number],
-    ambientIntensity: isMobile ? 0.75 : 0,
   }
 
   return (
     <>
-      {!isMobile && (
-        <Env
-          intensity={c.envIntensity}
-          rotationX={0}
-          rotationY={0}
-          rotationZ={0}
-          asBackground={false}
-          bgIntensity={0.4}
-          bgBlur={0}
-        />
-      )}
-      {isMobile && <ambientLight intensity={c.ambientIntensity} color="#ffffff" />}
+      <Env
+        intensity={c.envIntensity}
+        rotationX={0}
+        rotationY={0}
+        rotationZ={0}
+        asBackground={false}
+        bgIntensity={0.4}
+        bgBlur={0}
+      />
       <hemisphereLight args={[c.hemiSky, c.hemiGround, c.hemiIntensity]} />
       <directionalLight position={c.fillPos} intensity={c.fillIntensity} color={c.fillColor} />
     </>
@@ -179,7 +174,7 @@ function Man2({
     if (!hasRenderedFirstFrameRef.current && scene) {
       hasRenderedFirstFrameRef.current = true
       requestAnimationFrame(() => {
-        heroModelManager.markModelReady()
+        heroModelManager.markModelLoaded()
       })
     }
   })
@@ -533,13 +528,16 @@ function Man2({
   }, [mixer])
 
   return (
-    <group
-      position={[posX, posY, posZ]}
-      rotation={[0, (rotationY * Math.PI) / 180, 0]}
-      scale={scale}
-    >
-      <primitive object={model} />
-    </group>
+    <>
+      <group
+        position={[posX, posY, posZ]}
+        rotation={[0, (rotationY * Math.PI) / 180, 0]}
+        scale={scale}
+      >
+        <primitive object={model} />
+      </group>
+      <SceneRenderGate modelScene={model} />
+    </>
   )
 }
 
@@ -610,6 +608,35 @@ function Post2({
       <SMAA />
     </EffectComposer>
   )
+}
+
+// Strict Scene Render Gate:
+// Continuously inspects the WebGL frame to verify that BOTH the original hero model
+// AND the complete lighting environment (scene.environment) are actively rendered before signaling readiness.
+function SceneRenderGate({ modelScene }: { modelScene: THREE.Object3D | null }) {
+  const threeScene = useThree((s) => s.scene)
+  const gl = useThree((s) => s.gl)
+  const hasConfirmedRenderRef = useRef(false)
+
+  useFrame(() => {
+    if (hasConfirmedRenderRef.current) return
+
+    // Mandatory condition 1: Original hero model is present and populated
+    const isModelPresent = !!modelScene && modelScene.children.length > 0
+    // Mandatory condition 2: Lighting environment map is bound to the scene
+    const isEnvPresent = !!threeScene.environment
+    // Mandatory condition 3: WebGL renderer context is active
+    const isRendererActive = !!gl && !gl.isContextLost()
+
+    if (isModelPresent && isEnvPresent && isRendererActive) {
+      hasConfirmedRenderRef.current = true
+      requestAnimationFrame(() => {
+        heroModelManager.markSceneRendered(true, true)
+      })
+    }
+  })
+
+  return null
 }
 
 // 场景根组件：展示 me.glb（相机由 glb 动画 + 滚动驱动）

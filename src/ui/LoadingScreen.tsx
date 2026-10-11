@@ -30,6 +30,10 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const heroModelStatus = useStore((s) => s.heroModelStatus)
   const heroModelProgress = useStore((s) => s.heroModelProgress)
   const heroModelError = useStore((s) => s.heroModelError)
+  const heroEnvReady = useStore((s) => s.heroEnvReady)
+  const heroEnvStatus = useStore((s) => s.heroEnvStatus)
+  const heroEnvProgress = useStore((s) => s.heroEnvProgress)
+  const heroEnvError = useStore((s) => s.heroEnvError)
   const theme = useStore((s) => s.theme)
 
   // Drei useProgress tracks all Three.js DefaultLoadingManager items (e.g. env.hdr)
@@ -40,39 +44,49 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const [progressValue, setProgressValue] = useState(0)
   const hasTriggeredCompleteRef = useRef(false)
 
-  // Calculate genuine progress percentage:
-  // - While model is loading/parsing, reflects real byte progress up to 94%
-  // - 100% is REACHED ONLY when heroModelReady is true (model loaded, mounted, and first frame rendered)
-  // - In error state, does not reach 100%
+  // Combined readiness state
+  const isOverallError = heroModelStatus === 'error' || heroEnvStatus === 'error'
+  const isOverallReady = heroModelReady && heroModelStatus === 'ready' && heroEnvReady && heroEnvStatus === 'ready'
+  const combinedError = heroModelError || heroEnvError
+
+  // Calculate genuine progress percentage reflecting BOTH mandatory dependencies:
+  // - Model download & decode progress (0..100)
+  // - Environment HDR download & PMREM generation progress (0..100)
+  // - Weighted average (50% model, 50% environment)
+  // - Capped at 94% until WebGL renderer executes the first frame with BOTH model and lighting active
+  // - 100% is reached ONLY when both are completely ready and rendered
   useEffect(() => {
     if (loadingState !== 'LOADING') return
 
-    if (heroModelReady && heroModelStatus === 'ready') {
+    if (isOverallReady) {
       setProgressValue(100)
       return
     }
 
-    if (heroModelStatus === 'error') {
+    if (isOverallError) {
       // Keep at whatever was loaded without claiming completion
       setProgressValue((prev) => Math.min(prev, 90))
       return
     }
 
-    // Measure genuine progress from actual model download events
+    // Measure genuine progress from actual model and environment download/decode events
     const modelPct = heroModelProgress || 0
-    const envPct = Number.isFinite(dreiProgress) ? Math.min(dreiProgress, 90) : 0
-    const currentGenuine = Math.max(modelPct, envPct)
+    const envBytePct = Number.isFinite(dreiProgress) ? Math.min(dreiProgress, 90) : 0
+    const envPct = Math.max(heroEnvProgress || 0, envBytePct)
 
-    // Cap at 94% until WebGL renderer confirms the first drawn frame containing the character
-    const capped = Math.min(94, Math.max(0, Math.round(currentGenuine)))
+    // True composite progress of both mandatory initial dependencies
+    const combinedGenuine = Math.round(modelPct * 0.55 + envPct * 0.45)
+
+    // Strictly capped at 94% until WebGL renderer confirms the first frame with model + lighting
+    const capped = Math.min(94, Math.max(0, combinedGenuine))
     setProgressValue((prev) => Math.max(prev, capped))
-  }, [heroModelReady, heroModelStatus, heroModelProgress, dreiProgress, loadingState])
+  }, [isOverallReady, isOverallError, heroModelProgress, heroEnvProgress, dreiProgress, loadingState])
 
   const displayProgress = loadingState === 'LOADING' ? progressValue : 100
 
   const message = useMemo(
-    () => getLoadingMessage(displayProgress, heroModelStatus, heroModelError),
-    [displayProgress, heroModelStatus, heroModelError]
+    () => getLoadingMessage(displayProgress, isOverallError ? 'error' : heroModelStatus, combinedError),
+    [displayProgress, isOverallError, heroModelStatus, combinedError]
   )
 
   // Gracefully log any asset loading errors in development
@@ -83,23 +97,26 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   }, [dreiErrors])
 
   // Completion detection:
-  // Reaches COMPLETE only when the 3D model is confirmed loaded, scene-mounted, and rendered
+  // Reaches COMPLETE only when BOTH the 3D model and the complete lighting environment
+  // are confirmed loaded, scene-mounted, and successfully rendered together
   useEffect(() => {
     if (loadingState !== 'LOADING') return
 
-    if (heroModelReady && heroModelStatus === 'ready' && !hasTriggeredCompleteRef.current) {
+    if (isOverallReady && !hasTriggeredCompleteRef.current) {
       hasTriggeredCompleteRef.current = true
       setProgressValue(100)
       setLoadingState('COMPLETE')
     }
-  }, [heroModelReady, heroModelStatus, loadingState])
+  }, [isOverallReady, loadingState])
 
-  // Safety check: if heroModelStatus enters error, ensure progress stops and no transition occurs
+  // Safety check: if either dependency enters error state, ensure progress stops and no transition occurs
   useEffect(() => {
-    if (heroModelStatus === 'error') {
-      console.warn('[TOBI XP] 3D Hero model entered error state. Strict loading gate active.')
+    if (isOverallError) {
+      console.warn(
+        `[TOBI XP] Hero environment or model entered error state (model=${heroModelStatus}, env=${heroEnvStatus}). Strict loading gate active.`
+      )
     }
-  }, [heroModelStatus])
+  }, [isOverallError, heroModelStatus, heroEnvStatus])
 
   // Hold completed state briefly so the user sees 100% and "alright, let's go.",
   // before smoothly sliding up the loading curtain
@@ -190,7 +207,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
             aria-live="polite"
           >
             {message}
-            {heroModelStatus === 'error' && (
+            {isOverallError && (
               <div className="loading-screen__fallback-actions">
                 <button
                   type="button"

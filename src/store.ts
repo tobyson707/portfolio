@@ -11,6 +11,10 @@ interface StoreState {
   heroModelStatus: 'idle' | 'loading' | 'loaded' | 'ready' | 'error'
   heroModelProgress: number
   heroModelError: string | null
+  heroEnvReady: boolean
+  heroEnvStatus: 'idle' | 'loading' | 'loaded' | 'ready' | 'error'
+  heroEnvProgress: number
+  heroEnvError: string | null
   isFallbackActive: boolean
   isModalOpen: boolean
   isMenuOpen: boolean
@@ -28,6 +32,9 @@ interface StoreState {
   setHeroModelReady: (ready: boolean) => void
   setHeroModelStatus: (status: 'idle' | 'loading' | 'loaded' | 'ready' | 'error', error?: string | null) => void
   setHeroModelProgress: (progress: number) => void
+  setHeroEnvReady: (ready: boolean) => void
+  setHeroEnvStatus: (status: 'idle' | 'loading' | 'loaded' | 'ready' | 'error', error?: string | null) => void
+  setHeroEnvProgress: (progress: number) => void
   setFallbackActive: (active: boolean) => void
   setIsModalOpen: (open: boolean) => void
   setIsMenuOpen: (open: boolean) => void
@@ -77,6 +84,10 @@ export const useStore = create<StoreState>((set) => ({
   heroModelStatus: 'idle',
   heroModelProgress: 0,
   heroModelError: null,
+  heroEnvReady: false,
+  heroEnvStatus: 'idle',
+  heroEnvProgress: 0,
+  heroEnvError: null,
   isFallbackActive: false,
   isModalOpen: false,
   isMenuOpen: false,
@@ -109,6 +120,17 @@ export const useStore = create<StoreState>((set) => ({
   setHeroModelProgress: (progress) =>
     set((state) => ({
       heroModelProgress: Math.max(state.heroModelProgress, progress),
+    })),
+  setHeroEnvReady: (ready) => set({ heroEnvReady: ready }),
+  setHeroEnvStatus: (status, error = null) =>
+    set((state) => ({
+      heroEnvStatus: status,
+      heroEnvError: error !== undefined ? error : state.heroEnvError,
+      heroEnvReady: status === 'ready' ? true : state.heroEnvReady,
+    })),
+  setHeroEnvProgress: (progress) =>
+    set((state) => ({
+      heroEnvProgress: Math.max(state.heroEnvProgress, progress),
     })),
   setFallbackActive: (active) => set({ isFallbackActive: active }),
   setIsModalOpen: (open) => set({ isModalOpen: open }),
