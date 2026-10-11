@@ -168,16 +168,9 @@ function Man2({
     extendHeroLoader
   )
 
-  const hasRenderedFirstFrameRef = useRef(false)
-  useFrame(() => {
-    // Confirm the first rendered frame containing the model has executed
-    if (!hasRenderedFirstFrameRef.current && scene) {
-      hasRenderedFirstFrameRef.current = true
-      requestAnimationFrame(() => {
-        heroModelManager.markModelLoaded()
-      })
-    }
-  })
+  useEffect(() => {
+    heroModelManager.markModelLoaded()
+  }, [])
 
   // 克隆模型；收集眼睛对象、聚焦锚点对象、glb 自带相机、各锚点景深开关
   const { model, eyes, points, startPoint, glbCam, focusNode, dof } = useMemo(() => {
@@ -631,7 +624,9 @@ function SceneRenderGate({ modelScene }: { modelScene: THREE.Object3D | null }) 
       Boolean(
         modelScene.getObjectByName('man') ||
         modelScene.getObjectByName('face') ||
-        modelScene.getObjectByName('110')
+        modelScene.getObjectByName('110') ||
+        modelScene.getObjectByName('masked figure 3d model') ||
+        modelScene.getObjectByName('Camera')
       )
 
     // Mandatory condition 2: Lighting environment map is bound to the scene, active, and prefiltered
@@ -660,10 +655,10 @@ function SceneRenderGate({ modelScene }: { modelScene: THREE.Object3D | null }) 
       // Step B: Verify at least two full render passes complete with both dependencies actively bound
       renderedFramesRef.current += 1
       if (renderedFramesRef.current >= 2) {
-        hasConfirmedRenderRef.current = true
-        requestAnimationFrame(() => {
-          heroModelManager.markSceneRendered(true, true)
-        })
+        heroModelManager.markSceneRendered(true, true)
+        if (heroModelManager.getIsReady()) {
+          hasConfirmedRenderRef.current = true
+        }
       }
     }
   })

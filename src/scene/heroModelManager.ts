@@ -27,7 +27,6 @@ class HeroModelManager {
 
   private registeredLoaders = new WeakSet<GLTFLoader>()
   private listeners: Array<() => void> = []
-  private retryListeners: Array<() => void> = []
 
   constructor() {
     // Sync initial state with store
@@ -125,6 +124,7 @@ class HeroModelManager {
 
       const wrappedOnLoad = (gltf: any) => {
         // Asset download and GLTF parse complete
+        this.isModelLoaded = true
         if (this.status !== 'ready') {
           this.setStatus('loaded')
           this.setProgress(94)
@@ -229,10 +229,7 @@ class HeroModelManager {
    * Can ONLY succeed when BOTH model and environment are completely ready.
    */
   public markSceneRendered(hasModel: boolean, hasEnvironment: boolean) {
-    if (!hasModel || !hasEnvironment || !this.isModelLoaded || !this.isEnvReady) {
-      console.warn(
-        `[TOBI XP] Scene rendered frame check deferred: hasModel=${hasModel}, hasEnv=${hasEnvironment}, modelLoaded=${this.isModelLoaded}, envReady=${this.isEnvReady}`
-      )
+    if (!hasModel || !hasEnvironment) {
       return
     }
 
@@ -279,7 +276,7 @@ class HeroModelManager {
    */
   public markModelError(error: any) {
     if (this.isReady) return
-    const errorMsg = error instanceof Error ? error.message : String(error || 'Model loading error')
+    const errorMsg = error instanceof Error ? error.message : String(error || 'INITIALISATION INCOMPLETE')
     console.error('[TOBI XP] 3D Hero character model failed to load:', error)
 
     this.setError(errorMsg)
@@ -292,56 +289,6 @@ class HeroModelManager {
     } catch {
       // ignore
     }
-
-    this.notify()
-  }
-
-  /**
-   * Register a callback to re-trigger loading of original assets upon retry.
-   */
-  public onRetry(fn: () => void) {
-    this.retryListeners.push(fn)
-    return () => {
-      this.retryListeners = this.retryListeners.filter((l) => l !== fn)
-    }
-  }
-
-  /**
-   * Reset state for retry with the original hero model and original environment
-   */
-  public retry() {
-    this.status = 'loading'
-    this.progress = 0
-    this.error = null
-    this.isReady = false
-    this.isFallback = false
-    this.hasRenderedFrame = false
-    this.isModelLoaded = false
-
-    this.envStatus = 'loading'
-    this.envProgress = 0
-    this.envError = null
-    this.isEnvReady = false
-
-    try {
-      const store = useStore.getState()
-      store.setHeroModelStatus('loading', null)
-      store.setHeroModelProgress(0)
-      store.setHeroModelReady(false)
-      store.setHeroEnvStatus('loading', null)
-      store.setHeroEnvProgress(0)
-      store.setHeroEnvReady(false)
-    } catch {
-      // ignore
-    }
-
-    this.retryListeners.forEach((fn) => {
-      try {
-        fn()
-      } catch {
-        // ignore
-      }
-    })
 
     this.notify()
   }

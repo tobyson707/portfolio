@@ -62,23 +62,6 @@ export default function Env({
     return () => dom.removeEventListener('webglcontextlost', handleContextLost)
   }, [gl])
 
-  const [retryTrigger, setRetryTrigger] = useState(0)
-
-  useEffect(() => {
-    return heroModelManager.onRetry(() => {
-      if (cachedEnvMap) {
-        try {
-          cachedEnvMap.dispose()
-        } catch {
-          // ignore
-        }
-        cachedEnvMap = null
-      }
-      setTexture(null)
-      setRetryTrigger((v) => v + 1)
-    })
-  }, [])
-
   useEffect(() => {
     let isMounted = true
     activeUsersCount++
@@ -154,7 +137,7 @@ export default function Env({
         cachedEnvMap = null
       }
     }
-  }, [gl, retryTrigger])
+  }, [gl])
 
   const initialBg = useRef<any>(null)
   useEffect(() => {

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useProgress, useGLTF } from '@react-three/drei'
+import { useProgress } from '@react-three/drei'
 import { useStore } from '../store'
-import { heroModelManager } from '../scene/heroModelManager'
 
 type LoadingScreenProps = {
   onComplete?: () => void
@@ -10,9 +9,9 @@ type LoadingScreenProps = {
 
 type LoadingState = 'LOADING' | 'COMPLETE' | 'EXITING'
 
-const getLoadingMessage = (progress: number, status: string, error?: string | null) => {
-  if (status === 'error') {
-    return error ? `Loading issue: ${error}` : 'The 3D character and lighting could not be loaded. Check your connection and try again.'
+const getLoadingMessage = (progress: number, isIncomplete: boolean) => {
+  if (isIncomplete) {
+    return 'INITIALISATION INCOMPLETE'
   }
   if (progress >= 100) return "alright, let's go."
   if (progress >= 85) return "okay, we're getting somewhere"
@@ -29,11 +28,9 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const heroModelReady = useStore((s) => s.heroModelReady)
   const heroModelStatus = useStore((s) => s.heroModelStatus)
   const heroModelProgress = useStore((s) => s.heroModelProgress)
-  const heroModelError = useStore((s) => s.heroModelError)
   const heroEnvReady = useStore((s) => s.heroEnvReady)
   const heroEnvStatus = useStore((s) => s.heroEnvStatus)
   const heroEnvProgress = useStore((s) => s.heroEnvProgress)
-  const heroEnvError = useStore((s) => s.heroEnvError)
   const theme = useStore((s) => s.theme)
 
   // Drei useProgress tracks all Three.js DefaultLoadingManager items (e.g. env.hdr)
@@ -42,19 +39,27 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const [loadingState, setLoadingState] = useState<LoadingState>('LOADING')
   const [isRemoved, setIsRemoved] = useState(() => entered)
   const [progressValue, setProgressValue] = useState(0)
+  const [isTimedOut, setIsTimedOut] = useState(false)
   const hasTriggeredCompleteRef = useRef(false)
 
-  // Combined readiness state: strictly require BOTH the original model and complete lighting environment
-  const isOverallError = heroModelStatus === 'error' || heroEnvStatus === 'error'
+  // Strict Authoritative Readiness: requires original model AND complete lighting environment rendered
+  const isOverallError = heroModelStatus === 'error' || heroEnvStatus === 'error' || isTimedOut
   const isOverallReady = heroModelReady && heroModelStatus === 'ready' && heroEnvReady && heroEnvStatus === 'ready'
-  const combinedError = heroModelError || heroEnvError
 
-  // Calculate genuine progress percentage reflecting BOTH mandatory dependencies:
-  // - Model download & decode progress (0..100)
-  // - Environment HDR download & PMREM generation progress (0..100)
-  // - Balanced representation (50% model, 50% environment)
-  // - Strictly capped at 95% until WebGL renderer executes the confirmed frame with BOTH model and lighting active
-  // - 100% is reached ONLY when both are completely ready and rendered
+  // Timeout handler: if initialization times out, keep loading screen displayed indefinitely
+  // without retry buttons, fallbacks, or bypasses.
+  useEffect(() => {
+    if (loadingState !== 'LOADING') return
+    const timeoutDuration = 35000 // 35 seconds
+    const timer = setTimeout(() => {
+      if (!isOverallReady) {
+        setIsTimedOut(true)
+      }
+    }, timeoutDuration)
+    return () => clearTimeout(timer)
+  }, [loadingState, isOverallReady])
+
+  // Calculate genuine progress percentage reflecting BOTH mandatory dependencies
   useEffect(() => {
     if (loadingState !== 'LOADING') return
 
@@ -85,8 +90,8 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const displayProgress = loadingState === 'LOADING' ? progressValue : 100
 
   const message = useMemo(
-    () => getLoadingMessage(displayProgress, isOverallError ? 'error' : heroModelStatus, combinedError),
-    [displayProgress, isOverallError, heroModelStatus, combinedError]
+    () => getLoadingMessage(displayProgress, isOverallError),
+    [displayProgress, isOverallError]
   )
 
   // Gracefully log any asset loading errors in development
@@ -108,28 +113,6 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       setLoadingState('COMPLETE')
     }
   }, [isOverallReady, loadingState])
-
-  // Safety check: if either dependency enters error state, ensure progress stops and no transition occurs
-  useEffect(() => {
-    if (isOverallError) {
-      console.warn(
-        `[TOBI XP] Hero environment or model entered error state (model=${heroModelStatus}, env=${heroEnvStatus}). Strict loading gate active.`
-      )
-    }
-  }, [isOverallError, heroModelStatus, heroEnvStatus])
-
-  // Stall detection: if initial loading stalls for over 25 seconds, present error & retry state.
-  // NEVER force transition to ready!
-  useEffect(() => {
-    if (loadingState !== 'LOADING') return
-    const stallTimer = setTimeout(() => {
-      if (!isOverallReady) {
-        console.warn('[TOBI XP] Loading stalled after 25s. Entering error state.')
-        heroModelManager.markModelError('Loading timed out. Please check your network connection.')
-      }
-    }, 25000)
-    return () => clearTimeout(stallTimer)
-  }, [loadingState, isOverallReady])
 
   // Hold completed state briefly so the user sees 100% and "alright, let's go.",
   // before smoothly sliding up the loading curtain
@@ -157,18 +140,6 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       }
     }
   }, [loadingState])
-
-  const handleRetry = useCallback(() => {
-    try {
-      useGLTF.clear(`${import.meta.env.BASE_URL}models/tbxp.glb`)
-    } catch {
-      // ignore
-    }
-    heroModelManager.retry()
-    setProgressValue(0)
-    setLoadingState('LOADING')
-    hasTriggeredCompleteRef.current = false
-  }, [])
 
   if (isRemoved || entered) return null
 
@@ -220,17 +191,6 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
             aria-live="polite"
           >
             {message}
-            {isOverallError && (
-              <div className="loading-screen__fallback-actions">
-                <button
-                  type="button"
-                  className="loading-screen__fallback-btn"
-                  onClick={handleRetry}
-                >
-                  RETRY
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
