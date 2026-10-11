@@ -265,6 +265,7 @@ export default function ProductDesignView({ onClose }: ProductDesignViewProps) {
 
     return () => {
       setIsModalOpen(false)
+      useStore.getState().setSelectedCategory(null)
       document.body.style.overflow = prevOverflow
     }
   }, [setIsModalOpen])

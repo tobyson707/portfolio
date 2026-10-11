@@ -21,6 +21,7 @@ export default function BrandingGallery({ onClose }: BrandingGalleryProps) {
     useStore.getState().setSelectedCategory('BRANDING & IDENTITY')
     return () => {
       setIsModalOpen(false)
+      useStore.getState().setSelectedCategory(null)
     }
   }, [setIsModalOpen])
 
@@ -73,7 +74,7 @@ export default function BrandingGallery({ onClose }: BrandingGalleryProps) {
               Branding &amp; Identity
             </h3>
             <p className="branding-head-desc">
-              Logo design, visual systems, and PDF case studies exploring brand architecture and geometric mark construction.
+              Logo design, visual systems, and case studies exploring brand architecture and geometric mark construction.
             </p>
           </header>
 
@@ -86,7 +87,7 @@ export default function BrandingGallery({ onClose }: BrandingGalleryProps) {
                     type="button"
                     className="wk-line-btn"
                     onClick={() => setSelectedProject(proj)}
-                    aria-label={`Open ${proj.title} PDF case study`}
+                    aria-label={`Open ${proj.title} case study`}
                   >
                     <span className="wk-line-name">{proj.title}</span>
                     <span className="wk-line-meta">{proj.description}</span>

@@ -294,6 +294,7 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
     useStore.getState().setSelectedCategory('STURVS')
     return () => {
       setIsModalOpen(false)
+      useStore.getState().setSelectedCategory(null)
     }
   }, [setIsModalOpen])
 

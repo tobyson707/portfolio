@@ -308,20 +308,31 @@ canvas {
   background: linear-gradient(to top, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
-/* 首屏底部居中局域暗色渐变（提升 SCROLL 指示器在深色角色与背景上的对比度与易读性） */
+/* 首屏底部全屏主题自适应渐变（提升 SCROLL 指示器在不同主题角色与背景上的对比度与易读性） */
 .hero-scroll-gradient {
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(880px, 92vw);
-  height: clamp(140px, 22vh, 220px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: clamp(140px, 22vh, 240px);
   pointer-events: none;
   z-index: 2;
-  background: radial-gradient(
-    ellipse 65% 90% at 50% 100%,
-    rgba(8, 8, 10, 0.82) 0%,
-    rgba(8, 8, 10, 0.58) 36%,
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.75) 35%,
+    rgba(255, 255, 255, 0.28) 68%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: background 0.3s ease;
+}
+
+[data-theme="dark"] .hero-scroll-gradient {
+  background: linear-gradient(
+    to top,
+    rgba(8, 8, 10, 0.85) 0%,
+    rgba(8, 8, 10, 0.55) 35%,
     rgba(8, 8, 10, 0.22) 68%,
     rgba(8, 8, 10, 0) 100%
   );
@@ -348,12 +359,18 @@ canvas {
 }
 
 .scroll-mouse-icon {
-  color: #ffffff;
+  color: #0D0D0F;
   width: 22px;
   height: 32px;
   stroke-width: 1.6;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.8));
   animation: mouseBounce 2s ease-in-out infinite;
+  transition: color 0.3s ease, filter 0.3s ease;
+}
+
+[data-theme="dark"] .scroll-mouse-icon {
+  color: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
 }
 
 .scroll-mouse-wheel {
@@ -366,6 +383,12 @@ canvas {
   font-size: 9.5px;
   letter-spacing: 0.26em;
   text-transform: uppercase;
+  color: #0D0D0F;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+[data-theme="dark"] .scroll-cue-label {
   color: #ffffff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.6);
 }
@@ -5015,15 +5038,30 @@ canvas {
     display: none !important;
   }
 
-  /* Bottom dark cinematic contrast gradient for mobile */
+  /* Bottom theme-aware contrast gradient for mobile */
   .hero-mobile-gradient {
     position: absolute;
     inset-x: 0;
     bottom: 0;
     height: 48vh;
-    background: linear-gradient(to top, rgba(8, 8, 10, 0.94) 0%, rgba(8, 8, 10, 0.65) 48%, rgba(8, 8, 10, 0) 100%);
+    background: linear-gradient(
+      to top,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.72) 48%,
+      rgba(255, 255, 255, 0) 100%
+    );
     pointer-events: none;
     z-index: 12;
+    transition: background 0.3s ease;
+  }
+
+  [data-theme="dark"] .hero-mobile-gradient {
+    background: linear-gradient(
+      to top,
+      rgba(8, 8, 10, 0.94) 0%,
+      rgba(8, 8, 10, 0.65) 48%,
+      rgba(8, 8, 10, 0) 100%
+    );
   }
 
   .hero-mobile-layout {
@@ -5060,9 +5098,15 @@ canvas {
     font-size: clamp(2.6rem, 11.5vw, 3.6rem);
     line-height: 1;
     letter-spacing: -0.04em;
-    color: #FFFFFF;
+    color: #0D0D0F;
     margin: 0;
     text-align: center;
+    text-shadow: 0 2px 12px rgba(255, 255, 255, 0.8);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+  }
+
+  [data-theme="dark"] .hero-mobile-title {
+    color: #FFFFFF;
     text-shadow: 0 4px 22px rgba(0, 0, 0, 0.7);
   }
 
@@ -5077,9 +5121,15 @@ canvas {
     line-height: 1.2;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: #F3F0E8;
+    color: #3D4044;
     margin: 0;
     text-align: center;
+    text-shadow: 0 1px 6px rgba(255, 255, 255, 0.8);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+  }
+
+  [data-theme="dark"] .hero-mobile-subtitle {
+    color: #F3F0E8;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
   }
 
@@ -5100,18 +5150,29 @@ canvas {
     font-size: 9px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: #E2DDD5;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
+    color: #0D0D0F;
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
     line-height: 1;
     padding-left: 0.28em; /* Optically counter letter-spacing for true center */
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+  }
+
+  [data-theme="dark"] .hero-mobile-swipe-label {
+    color: #E2DDD5;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
   }
 
   .hero-mobile-chevron {
     width: 11px;
     height: 7px;
+    color: #0D0D0F;
+    filter: drop-shadow(0 1px 3px rgba(255, 255, 255, 0.8));
+    transition: transform 0.2s ease, color 0.3s ease, filter 0.3s ease;
+  }
+
+  [data-theme="dark"] .hero-mobile-chevron {
     color: rgba(226, 221, 213, 0.78);
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
-    transition: transform 0.2s ease;
   }
 }
 

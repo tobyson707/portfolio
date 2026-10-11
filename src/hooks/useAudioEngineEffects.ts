@@ -141,7 +141,11 @@ export function useAudioEngineEffects() {
       return
     }
 
-    // Returning to home view: smoothly resync to current scroll position over 500ms
+    // Returning to home view / no overlays active:
+    // Explicitly reset section state on audioEngine to clear about/modal flags
+    audioEngine.setSection('home')
+
+    // Smoothly resync to current scroll position over 500ms
     syncScrollSection(0.5)
   }, [isMenuOpen, isAboutOpen, isModalOpen, currentView, selectedCategory, syncScrollSection])
 

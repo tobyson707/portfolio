@@ -7,14 +7,14 @@ import { SAMPLE_VERIFICATION_PDF } from '../data/brandIdentityManifest'
 import { useStore } from '../store'
 import { isMobileDevice } from '../utils/device'
 
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+
 // ---------------------------------------------------------------------------
 // Configure PDF.js Worker — 100% same-origin, offline-capable, and CSP-compliant
 // ---------------------------------------------------------------------------
 if (typeof window !== 'undefined') {
   try {
-    const baseUrl = import.meta.env.BASE_URL || '/'
-    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `${cleanBase}pdf.worker.min.mjs`
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
   } catch (err) {
     console.warn('[PDF] Failed to set worker source:', err)
   }
@@ -342,7 +342,7 @@ export default function PdfPopupViewer({
     setScale(Number(clampedScale.toFixed(2)))
   }, [firstPageDimensions, isMobile])
 
-  // Load PDF Document with local, same-origin cMap support
+  // Load Case Study Document with local, same-origin cMap support and ArrayBuffer fallback
   useEffect(() => {
     if (!isOpen || !activePdfPath) return
 
@@ -355,16 +355,21 @@ export default function PdfPopupViewer({
 
     const baseUrl = import.meta.env.BASE_URL || '/'
     const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    const finalUrl = activePdfPath.startsWith('http')
+      ? activePdfPath
+      : `${cleanBase}${activePdfPath.replace(/^\//, '')}`
 
-    const loadingTask = pdfjsLib.getDocument({
-      url: activePdfPath,
-      cMapUrl: `${cleanBase}cmaps/`,
-      cMapPacked: true,
-      standardFontDataUrl: `${cleanBase}standard_fonts/`,
-    })
+    let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null
 
-    loadingTask.promise
-      .then(async (doc) => {
+    const loadDoc = async () => {
+      try {
+        loadingTask = pdfjsLib.getDocument({
+          url: finalUrl,
+          cMapUrl: `${cleanBase}cmaps/`,
+          cMapPacked: true,
+          standardFontDataUrl: `${cleanBase}standard_fonts/`,
+        })
+        const doc = await loadingTask.promise
         if (isCancelled) return
         setPdfDoc(doc)
         setNumPages(doc.numPages)
@@ -384,23 +389,56 @@ export default function PdfPopupViewer({
         }
 
         setIsLoading(false)
-      })
-      .catch((err) => {
+      } catch (err: any) {
         if (isCancelled) return
-        console.warn('[PDF] Document load error:', err?.message || err)
-        setLoadError(
-          err?.message ||
-            'The PDF case study for this project could not be opened.'
-        )
-        setIsLoading(false)
-      })
+        console.warn('[Case Study] Document load error, trying buffer fallback:', err?.message || err)
+        try {
+          const res = await fetch(finalUrl)
+          if (!res.ok) throw new Error(`HTTP ${res.status}`, { cause: err })
+          const buffer = await res.arrayBuffer()
+          if (isCancelled) return
+          loadingTask = pdfjsLib.getDocument({
+            data: new Uint8Array(buffer),
+            cMapUrl: `${cleanBase}cmaps/`,
+            cMapPacked: true,
+            standardFontDataUrl: `${cleanBase}standard_fonts/`,
+          })
+          const doc = await loadingTask.promise
+          if (isCancelled) return
+          setPdfDoc(doc)
+          setNumPages(doc.numPages)
+          try {
+            const firstPage = await doc.getPage(1)
+            const vp = firstPage.getViewport({ scale: 1.0 })
+            if (!isCancelled) {
+              const dims: PageDimensions = { width: vp.width, height: vp.height }
+              pageDimensionsMapRef.current.set(1, dims)
+              setFirstPageDimensions(dims)
+              fitWidthToContainer(dims)
+            }
+          } catch {
+            // ignore
+          }
+          setIsLoading(false)
+        } catch (fallbackErr: any) {
+          if (isCancelled) return
+          console.error('[Case Study] Fallback load failed:', fallbackErr)
+          setLoadError('The case study for this project could not be opened.')
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadDoc()
 
     return () => {
       isCancelled = true
-      try {
-        loadingTask.destroy()
-      } catch {
-        // ignore
+      if (loadingTask) {
+        try {
+          loadingTask.destroy()
+        } catch {
+          // ignore
+        }
       }
     }
   }, [isOpen, activePdfPath, fitWidthToContainer])
@@ -499,7 +537,7 @@ export default function PdfPopupViewer({
           className="wk-viewer-root pdf-popup-root"
           role="dialog"
           aria-modal="true"
-          aria-label={`PDF Case Study: ${project.title}`}
+          aria-label={`Case Study: ${project.title}`}
         >
           {/* Dark Semi-transparent Cinematic Overlay */}
           <motion.div
@@ -517,7 +555,7 @@ export default function PdfPopupViewer({
             type="button"
             className="wk-viewer-close-btn"
             onClick={onClose}
-            aria-label="Close PDF viewer"
+            aria-label="Close viewer"
             title="Close (Esc)"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -549,7 +587,7 @@ export default function PdfPopupViewer({
             {isLoading && (
               <div className="pdf-popup-loading">
                 <div className="pdf-loading-spinner" aria-hidden="true" />
-                <p className="pdf-popup-loading-text">LOADING PDF CASE STUDY...</p>
+                <p className="pdf-popup-loading-text">LOADING CASE STUDY... GIVE ME A SEC.</p>
               </div>
             )}
 
@@ -583,7 +621,7 @@ export default function PdfPopupViewer({
                       setIsUsingSample(true)
                     }}
                   >
-                    <span>PREVIEW WITH SAMPLE PDF</span>
+                    <span>PREVIEW CASE STUDY</span>
                     <span aria-hidden="true">→</span>
                   </button>
                   <button
