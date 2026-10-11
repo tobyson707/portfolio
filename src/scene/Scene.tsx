@@ -626,7 +626,8 @@ function SceneRenderGate({ modelScene }: { modelScene: THREE.Object3D | null }) 
     // Mandatory condition 2: Lighting environment map is bound to the scene
     const isEnvPresent = !!threeScene.environment
     // Mandatory condition 3: WebGL renderer context is active
-    const isRendererActive = !!gl && !gl.isContextLost()
+    const rawContext = typeof gl?.getContext === 'function' ? gl.getContext() : null
+    const isRendererActive = !!gl && (!rawContext || (typeof rawContext.isContextLost === 'function' ? !rawContext.isContextLost() : true))
 
     if (isModelPresent && isEnvPresent && isRendererActive) {
       hasConfirmedRenderRef.current = true

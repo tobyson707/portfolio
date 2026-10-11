@@ -1,6 +1,6 @@
 {
-  "name": "Remix portfolio",
-  "description": "Imported from GitHub: tobyson707/portfolio",
+  "name": "Tobi XP Portfolio",
+  "description": "Creative portfolio showcasing illustration, character design, product design, UI/UX, simulation development, and visual storytelling work by Tobi XP.",
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
