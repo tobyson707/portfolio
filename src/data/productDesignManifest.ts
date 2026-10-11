@@ -131,7 +131,7 @@ export const PRODUCT_CATALOGUE_PROJECTS: ProductDesignProject[] = [
     title: 'The Crimson Casefile',
     year: '2026',
     client: 'MIVA',
-    role: 'Lead Design Engineer',
+    role: 'CREATIVE PRODUCT DESIGNER & LEAD DESIGN ENGINEER',
     description: 'An interactive learning simulation about a crime investigation.',
     thumbnail: '/products/The Crimson Casefile/cc 1.webp',
     media: [
@@ -168,7 +168,7 @@ export const PRODUCT_CATALOGUE_PROJECTS: ProductDesignProject[] = [
     title: 'THE HORIZON COMMAND',
     year: '2026',
     client: 'MIVA',
-    role: 'LEAD DESIGN ENGINEER',
+    role: 'CREATIVE PRODUCT DESIGNER & LEAD DESIGN ENGINEER',
     description:
       'An interactive learning simulation about a disease outbreak and displacement.',
     thumbnail: '/products/The Horizon Command/h 1.webp',

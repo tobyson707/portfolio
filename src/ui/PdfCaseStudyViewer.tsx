@@ -4,12 +4,12 @@ import * as pdfjsLib from 'pdfjs-dist'
 import type { BrandCaseStudy } from '../data/brandIdentityManifest'
 import { useStore } from '../store'
 
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.js?url'
 
 // Configure PDF.js Worker
 if (typeof window !== 'undefined') {
   try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker || '/pdf.worker.min.js'
   } catch {
     // fallback
   }
@@ -73,10 +73,15 @@ export default function PdfCaseStudyViewer({
     setPdfDoc(null)
     setCurrentPage(1)
 
-    const loadingTask = pdfjsLib.getDocument({
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    const getDoc = pdfjsLib.getDocument || (pdfjsLib as any).default?.getDocument
+
+    const loadingTask = getDoc({
       url: caseStudy.pdfPath,
-      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.0.379'}/cmaps/`,
+      cMapUrl: `${cleanBase}cmaps/`,
       cMapPacked: true,
+      standardFontDataUrl: `${cleanBase}standard_fonts/`,
     })
 
     loadingTask.promise

@@ -7,14 +7,14 @@ import { SAMPLE_VERIFICATION_PDF } from '../data/brandIdentityManifest'
 import { useStore } from '../store'
 import { isMobileDevice } from '../utils/device'
 
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url'
 
 // ---------------------------------------------------------------------------
 // Configure PDF.js Worker — 100% same-origin, offline-capable, and CSP-compliant
 // ---------------------------------------------------------------------------
 if (typeof window !== 'undefined') {
   try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl || '/pdf.worker.min.js'
   } catch (err) {
     console.warn('[PDF] Failed to set worker source:', err)
   }
@@ -362,8 +362,9 @@ export default function PdfPopupViewer({
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null
 
     const loadDoc = async () => {
+      const getDoc = pdfjsLib.getDocument || (pdfjsLib as any).default?.getDocument
       try {
-        loadingTask = pdfjsLib.getDocument({
+        loadingTask = getDoc({
           url: finalUrl,
           cMapUrl: `${cleanBase}cmaps/`,
           cMapPacked: true,
@@ -397,7 +398,7 @@ export default function PdfPopupViewer({
           if (!res.ok) throw new Error(`HTTP ${res.status}`, { cause: err })
           const buffer = await res.arrayBuffer()
           if (isCancelled) return
-          loadingTask = pdfjsLib.getDocument({
+          loadingTask = getDoc({
             data: new Uint8Array(buffer),
             cMapUrl: `${cleanBase}cmaps/`,
             cMapPacked: true,
