@@ -115,7 +115,7 @@ export const useStore = create<StoreState>((set) => ({
     set((state) => ({
       heroModelStatus: status,
       heroModelError: error !== undefined ? error : state.heroModelError,
-      heroModelReady: status === 'ready' ? true : state.heroModelReady,
+      heroModelReady: status === 'ready' ? true : (status === 'loading' || status === 'error' ? false : state.heroModelReady),
     })),
   setHeroModelProgress: (progress) =>
     set((state) => ({
@@ -126,7 +126,7 @@ export const useStore = create<StoreState>((set) => ({
     set((state) => ({
       heroEnvStatus: status,
       heroEnvError: error !== undefined ? error : state.heroEnvError,
-      heroEnvReady: status === 'ready' ? true : state.heroEnvReady,
+      heroEnvReady: status === 'ready' ? true : (status === 'loading' || status === 'error' ? false : state.heroEnvReady),
     })),
   setHeroEnvProgress: (progress) =>
     set((state) => ({

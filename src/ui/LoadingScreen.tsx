@@ -10,9 +10,9 @@ type LoadingScreenProps = {
 
 type LoadingState = 'LOADING' | 'COMPLETE' | 'EXITING'
 
-const getLoadingMessage = (progress: number, status: string, _error?: string | null) => {
+const getLoadingMessage = (progress: number, status: string, error?: string | null) => {
   if (status === 'error') {
-    return 'The 3D environment could not be loaded. Check your connection and try again.'
+    return error ? `Loading issue: ${error}` : 'The 3D character and lighting could not be loaded. Check your connection and try again.'
   }
   if (progress >= 100) return "alright, let's go."
   if (progress >= 85) return "okay, we're getting somewhere"
@@ -44,7 +44,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const [progressValue, setProgressValue] = useState(0)
   const hasTriggeredCompleteRef = useRef(false)
 
-  // Combined readiness state
+  // Combined readiness state: strictly require BOTH the original model and complete lighting environment
   const isOverallError = heroModelStatus === 'error' || heroEnvStatus === 'error'
   const isOverallReady = heroModelReady && heroModelStatus === 'ready' && heroEnvReady && heroEnvStatus === 'ready'
   const combinedError = heroModelError || heroEnvError
@@ -52,8 +52,8 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   // Calculate genuine progress percentage reflecting BOTH mandatory dependencies:
   // - Model download & decode progress (0..100)
   // - Environment HDR download & PMREM generation progress (0..100)
-  // - Weighted average (50% model, 50% environment)
-  // - Capped at 94% until WebGL renderer executes the first frame with BOTH model and lighting active
+  // - Balanced representation (50% model, 50% environment)
+  // - Strictly capped at 95% until WebGL renderer executes the confirmed frame with BOTH model and lighting active
   // - 100% is reached ONLY when both are completely ready and rendered
   useEffect(() => {
     if (loadingState !== 'LOADING') return
@@ -75,10 +75,10 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
     const envPct = Math.max(heroEnvProgress || 0, envBytePct)
 
     // True composite progress of both mandatory initial dependencies
-    const combinedGenuine = Math.round(modelPct * 0.55 + envPct * 0.45)
+    const combinedGenuine = Math.round(modelPct * 0.5 + envPct * 0.5)
 
-    // Strictly capped at 94% until WebGL renderer confirms the first frame with model + lighting
-    const capped = Math.min(94, Math.max(0, combinedGenuine))
+    // Strictly capped at 95% until WebGL renderer confirms the first frame with model + lighting
+    const capped = Math.min(95, Math.max(0, combinedGenuine))
     setProgressValue((prev) => Math.max(prev, capped))
   }, [isOverallReady, isOverallError, heroModelProgress, heroEnvProgress, dreiProgress, loadingState])
 
@@ -117,6 +117,19 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       )
     }
   }, [isOverallError, heroModelStatus, heroEnvStatus])
+
+  // Stall detection: if initial loading stalls for over 25 seconds, present error & retry state.
+  // NEVER force transition to ready!
+  useEffect(() => {
+    if (loadingState !== 'LOADING') return
+    const stallTimer = setTimeout(() => {
+      if (!isOverallReady) {
+        console.warn('[TOBI XP] Loading stalled after 25s. Entering error state.')
+        heroModelManager.markModelError('Loading timed out. Please check your network connection.')
+      }
+    }, 25000)
+    return () => clearTimeout(stallTimer)
+  }, [loadingState, isOverallReady])
 
   // Hold completed state briefly so the user sees 100% and "alright, let's go.",
   // before smoothly sliding up the loading curtain

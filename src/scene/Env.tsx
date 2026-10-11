@@ -62,12 +62,30 @@ export default function Env({
     return () => dom.removeEventListener('webglcontextlost', handleContextLost)
   }, [gl])
 
+  const [retryTrigger, setRetryTrigger] = useState(0)
+
+  useEffect(() => {
+    return heroModelManager.onRetry(() => {
+      if (cachedEnvMap) {
+        try {
+          cachedEnvMap.dispose()
+        } catch {
+          // ignore
+        }
+        cachedEnvMap = null
+      }
+      setTexture(null)
+      setRetryTrigger((v) => v + 1)
+    })
+  }, [])
+
   useEffect(() => {
     let isMounted = true
     activeUsersCount++
 
     if (cachedEnvMap) {
       setTexture(cachedEnvMap)
+      heroModelManager.setEnvProgress(100)
       heroModelManager.markEnvReady()
       return () => {
         activeUsersCount = Math.max(0, activeUsersCount - 1)
@@ -92,7 +110,7 @@ export default function Env({
         }
 
         try {
-          heroModelManager.setEnvProgress(92)
+          heroModelManager.setEnvProgress(90)
           // Generate PMREM for accurate PBR specular reflections and diffuse irradiance
           const pmremGenerator = new THREE.PMREMGenerator(gl)
           pmremGenerator.compileEquirectangularShader()
@@ -107,6 +125,7 @@ export default function Env({
           cachedEnvMap = envMap
           setTexture(envMap)
 
+          heroModelManager.setEnvProgress(95)
           // Mark environment completely ready and decoded on GPU
           heroModelManager.markEnvReady()
         } catch (err) {
@@ -116,8 +135,8 @@ export default function Env({
       },
       (event: ProgressEvent) => {
         if (event.lengthComputable && event.total > 0) {
-          // Map download bytes to 0..90%
-          const pct = Math.min(90, Math.max(1, Math.round((event.loaded / event.total) * 90)))
+          // Map download bytes to 0..85%
+          const pct = Math.min(85, Math.max(1, Math.round((event.loaded / event.total) * 85)))
           heroModelManager.setEnvProgress(pct)
         }
       },
@@ -135,7 +154,7 @@ export default function Env({
         cachedEnvMap = null
       }
     }
-  }, [gl])
+  }, [gl, retryTrigger])
 
   const initialBg = useRef<any>(null)
   useEffect(() => {

@@ -27,6 +27,7 @@ class HeroModelManager {
 
   private registeredLoaders = new WeakSet<GLTFLoader>()
   private listeners: Array<() => void> = []
+  private retryListeners: Array<() => void> = []
 
   constructor() {
     // Sync initial state with store
@@ -228,9 +229,9 @@ class HeroModelManager {
    * Can ONLY succeed when BOTH model and environment are completely ready.
    */
   public markSceneRendered(hasModel: boolean, hasEnvironment: boolean) {
-    if (!hasModel || !hasEnvironment) {
+    if (!hasModel || !hasEnvironment || !this.isModelLoaded || !this.isEnvReady) {
       console.warn(
-        `[TOBI XP] Scene rendered frame check deferred: modelReady=${hasModel}, envReady=${hasEnvironment}`
+        `[TOBI XP] Scene rendered frame check deferred: hasModel=${hasModel}, hasEnv=${hasEnvironment}, modelLoaded=${this.isModelLoaded}, envReady=${this.isEnvReady}`
       )
       return
     }
@@ -260,19 +261,16 @@ class HeroModelManager {
   }
 
   /**
-   * Retained for compatibility with legacy scene callbacks:
-   * Only transitions to ready if environment is also confirmed ready.
+   * Called when model resources are parsed and instantiated.
+   * Gated: Does not bypass the scene render gate or declare readiness prematurely.
    */
   public markModelReady() {
     this.isModelLoaded = true
-    if (this.isEnvReady) {
-      this.markSceneRendered(true, true)
-    } else {
-      if (this.status !== 'ready') {
-        this.setStatus('loaded')
-        this.setProgress(94)
-      }
+    if (this.status !== 'ready') {
+      this.setStatus('loaded')
+      this.setProgress(94)
     }
+    this.notify()
   }
 
   /**
@@ -296,6 +294,16 @@ class HeroModelManager {
     }
 
     this.notify()
+  }
+
+  /**
+   * Register a callback to re-trigger loading of original assets upon retry.
+   */
+  public onRetry(fn: () => void) {
+    this.retryListeners.push(fn)
+    return () => {
+      this.retryListeners = this.retryListeners.filter((l) => l !== fn)
+    }
   }
 
   /**
@@ -326,6 +334,15 @@ class HeroModelManager {
     } catch {
       // ignore
     }
+
+    this.retryListeners.forEach((fn) => {
+      try {
+        fn()
+      } catch {
+        // ignore
+      }
+    })
+
     this.notify()
   }
 

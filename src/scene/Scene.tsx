@@ -616,24 +616,55 @@ function Post2({
 function SceneRenderGate({ modelScene }: { modelScene: THREE.Object3D | null }) {
   const threeScene = useThree((s) => s.scene)
   const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
   const hasConfirmedRenderRef = useRef(false)
+  const hasCompiledRef = useRef(false)
+  const renderedFramesRef = useRef(0)
 
   useFrame(() => {
     if (hasConfirmedRenderRef.current) return
 
-    // Mandatory condition 1: Original hero model is present and populated
-    const isModelPresent = !!modelScene && modelScene.children.length > 0
-    // Mandatory condition 2: Lighting environment map is bound to the scene
-    const isEnvPresent = !!threeScene.environment
-    // Mandatory condition 3: WebGL renderer context is active
-    const rawContext = typeof gl?.getContext === 'function' ? gl.getContext() : null
-    const isRendererActive = !!gl && (!rawContext || (typeof rawContext.isContextLost === 'function' ? !rawContext.isContextLost() : true))
+    // Mandatory condition 1: Original hero model is present, populated, and contains original character geometry
+    const isModelValid =
+      !!modelScene &&
+      modelScene.children.length > 0 &&
+      Boolean(
+        modelScene.getObjectByName('man') ||
+        modelScene.getObjectByName('face') ||
+        modelScene.getObjectByName('110')
+      )
 
-    if (isModelPresent && isEnvPresent && isRendererActive) {
-      hasConfirmedRenderRef.current = true
-      requestAnimationFrame(() => {
-        heroModelManager.markSceneRendered(true, true)
-      })
+    // Mandatory condition 2: Lighting environment map is bound to the scene, active, and prefiltered
+    const isEnvPresent =
+      !!threeScene.environment &&
+      (threeScene.environmentIntensity ?? 0) > 0 &&
+      heroModelManager.getIsEnvReady()
+
+    // Mandatory condition 3: WebGL renderer context is active and valid
+    const rawContext = typeof gl?.getContext === 'function' ? gl.getContext() : null
+    const isRendererActive =
+      !!gl &&
+      (!rawContext || (typeof rawContext.isContextLost === 'function' ? !rawContext.isContextLost() : true))
+
+    if (isModelValid && isEnvPresent && isRendererActive) {
+      // Step A: Pre-compile all shader programs and upload textures to GPU to eliminate render hitching
+      if (!hasCompiledRef.current) {
+        hasCompiledRef.current = true
+        try {
+          gl.compile(threeScene, camera)
+        } catch (e) {
+          console.warn('[TOBI XP] Non-fatal shader compilation notice:', e)
+        }
+      }
+
+      // Step B: Verify at least two full render passes complete with both dependencies actively bound
+      renderedFramesRef.current += 1
+      if (renderedFramesRef.current >= 2) {
+        hasConfirmedRenderRef.current = true
+        requestAnimationFrame(() => {
+          heroModelManager.markSceneRendered(true, true)
+        })
+      }
     }
   })
 
@@ -652,8 +683,10 @@ export default function Scene() {
     <>
       <GradientBackground />
 
+      {/* Lighting environment is mounted concurrently outside Suspense so env.hdr and tbxp.glb load in parallel */}
+      <Lights />
+
       <Suspense fallback={null}>
-        <Lights />
         <ModelErrorBoundary>
           <Man2 focusRef={focusRef} frameRef={frameRef} dofBokehRef={dofBokehRef} dofRangeRef={dofRangeRef} />
         </ModelErrorBoundary>
