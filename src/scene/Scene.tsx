@@ -9,65 +9,22 @@ import { useStore } from '../store'
 import { heroModelManager, extendHeroLoader } from './heroModelManager'
 import { isMobileDevice } from '../utils/device'
 
-class ModelErrorBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
+class ModelErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
   static getDerivedStateFromError() {
     return { hasError: true };
   }
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('[TOBI XP] 3D Model load error, switching to procedural fallback:', error, errorInfo);
+    console.error('[TOBI XP] 3D Hero model render error:', error, errorInfo);
     heroModelManager.markModelError(error);
   }
   render() {
     if (this.state.hasError) {
-      return this.props.fallback;
+      // Never render a fallback or substitute model. Hero loading screen stays up on error.
+      return null;
     }
     return this.props.children;
   }
-}
-
-function ManFallback() {
-  const groupRef = useRef<THREE.Group>(null)
-  const innerRef = useRef<THREE.Mesh>(null)
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      const t = state.clock.getElapsedTime()
-      groupRef.current.rotation.y = t * 0.3
-      groupRef.current.position.y = 0.4 + Math.sin(t * 1.5) * 0.04
-    }
-    if (innerRef.current) {
-      const t = state.clock.getElapsedTime()
-      innerRef.current.rotation.x = t * 0.5
-      innerRef.current.rotation.z = t * 0.2
-    }
-  })
-
-  return (
-    <group ref={groupRef} position={[0, 0.4, -0.7]} scale={1.2}>
-      {/* Outer stylized faceted crystalline structure */}
-      <mesh castShadow receiveShadow>
-        <icosahedronGeometry args={[1.4, 1]} />
-        <meshStandardMaterial
-          color="#1c1d22"
-          roughness={0.25}
-          metalness={0.85}
-          flatShading
-        />
-      </mesh>
-      {/* Inner glowing accent core */}
-      <mesh ref={innerRef}>
-        <octahedronGeometry args={[0.85, 0]} />
-        <meshStandardMaterial
-          color="#F15723"
-          emissive="#F15723"
-          emissiveIntensity={0.6}
-          roughness={0.1}
-          metalness={0.9}
-        />
-      </mesh>
-    </group>
-  )
 }
 
 // 聚焦锚点（glb 内 focus-* 空对象），顺序对应履历节点；名单是唯一真源，见 data/focusPoints.ts
@@ -669,7 +626,7 @@ export default function Scene() {
 
       <Suspense fallback={null}>
         <Lights />
-        <ModelErrorBoundary fallback={<ManFallback />}>
+        <ModelErrorBoundary>
           <Man2 focusRef={focusRef} frameRef={frameRef} dofBokehRef={dofBokehRef} dofRangeRef={dofRangeRef} />
         </ModelErrorBoundary>
       </Suspense>

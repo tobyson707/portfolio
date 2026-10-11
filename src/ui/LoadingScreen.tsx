@@ -10,8 +10,10 @@ type LoadingScreenProps = {
 
 type LoadingState = 'LOADING' | 'COMPLETE' | 'EXITING'
 
-const getLoadingMessage = (progress: number, status: string, error?: string | null) => {
-  if (status === 'error') return error ? `character load issue: ${error.toLowerCase()}` : '3d character could not be loaded'
+const getLoadingMessage = (progress: number, status: string, _error?: string | null) => {
+  if (status === 'error') {
+    return 'The 3D environment could not be loaded. Check your connection and try again.'
+  }
   if (progress >= 100) return "alright, let's go."
   if (progress >= 85) return "okay, we're getting somewhere"
   if (progress >= 60) return 'almost there'
@@ -92,23 +94,12 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
     }
   }, [heroModelReady, heroModelStatus, loadingState])
 
-  // Safety fallback: prevents the portfolio from ever remaining permanently stuck
+  // Safety check: if heroModelStatus enters error, ensure progress stops and no transition occurs
   useEffect(() => {
-    if (loadingState !== 'LOADING') return
-
-    const safetyTimer = setTimeout(() => {
-      console.info('[TOBI XP] Loading safety timer triggered')
-      if (heroModelStatus === 'error') {
-        heroModelManager.proceedWithFallback()
-      } else {
-        heroModelManager.markModelReady()
-      }
-      setProgressValue(100)
-      setLoadingState('COMPLETE')
-    }, 9000)
-
-    return () => clearTimeout(safetyTimer)
-  }, [loadingState, heroModelStatus])
+    if (heroModelStatus === 'error') {
+      console.warn('[TOBI XP] 3D Hero model entered error state. Strict loading gate active.')
+    }
+  }, [heroModelStatus])
 
   // Hold completed state briefly so the user sees 100% and "alright, let's go.",
   // before smoothly sliding up the loading curtain
@@ -136,12 +127,6 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
       }
     }
   }, [loadingState])
-
-  const handleProceedFallback = useCallback(() => {
-    heroModelManager.proceedWithFallback()
-    setProgressValue(100)
-    setLoadingState('COMPLETE')
-  }, [])
 
   const handleRetry = useCallback(() => {
     try {
@@ -210,16 +195,9 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 <button
                   type="button"
                   className="loading-screen__fallback-btn"
-                  onClick={handleProceedFallback}
-                >
-                  Continue with fallback
-                </button>
-                <button
-                  type="button"
-                  className="loading-screen__fallback-btn"
                   onClick={handleRetry}
                 >
-                  Retry
+                  RETRY
                 </button>
               </div>
             )}

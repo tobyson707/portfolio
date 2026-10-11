@@ -153,7 +153,7 @@ class HeroModelManager {
 
   /**
    * Called when the 3D model fails to load or WebGL fails.
-   * Does NOT report 100% completion; marks error and activates procedural fallback.
+   * Keeps heroModelReady FALSE so loading screen never opens into missing model.
    */
   public markModelError(error: any) {
     if (this.isReady) return
@@ -161,13 +161,11 @@ class HeroModelManager {
     console.error('[TOBI XP] 3D Hero character model failed to load:', error)
 
     this.setError(errorMsg)
-    this.isFallback = true
+    this.isFallback = false
 
     try {
       const store = useStore.getState()
       store.setHeroModelStatus('error', errorMsg)
-      store.setFallbackActive(true)
-      // heroModelReady remains FALSE to never falsely claim completion
       store.setHeroModelReady(false)
     } catch {
       // ignore
@@ -177,46 +175,7 @@ class HeroModelManager {
   }
 
   /**
-   * Activates mobile performance mode, completing loading gracefully
-   * without creating or decoding heavy Three.js / Draco assets.
-   */
-  public markPerformanceModeReady() {
-    this.status = 'ready'
-    this.progress = 100
-    this.isReady = true
-    this.isFallback = true
-    this.hasRenderedFrame = true
-    try {
-      const store = useStore.getState()
-      store.setHeroModelProgress(100)
-      store.setHeroModelStatus('ready')
-      store.setHeroModelReady(true)
-      store.setFallbackActive(true)
-    } catch {
-      // ignore
-    }
-    this.notify()
-  }
-
-  /**
-   * Allows recovery with the procedural crystalline fallback.
-   */
-  public proceedWithFallback() {
-    this.isFallback = true
-    try {
-      const store = useStore.getState()
-      store.setFallbackActive(true)
-      store.setHeroModelStatus('ready')
-      store.setHeroModelReady(true)
-      store.enter()
-    } catch {
-      // ignore
-    }
-    this.notify()
-  }
-
-  /**
-   * Reset state for retry
+   * Reset state for retry with the original hero model
    */
   public retry() {
     this.status = 'loading'
@@ -231,7 +190,6 @@ class HeroModelManager {
       store.setHeroModelStatus('loading', null)
       store.setHeroModelProgress(0)
       store.setHeroModelReady(false)
-      store.setFallbackActive(false)
     } catch {
       // ignore
     }

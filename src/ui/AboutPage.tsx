@@ -87,43 +87,6 @@ function AboutCharacterFallback({ onInteract }: { onInteract?: () => void }) {
   )
 }
 
-function AboutFallbackModel() {
-  const groupRef = useRef<THREE.Group>(null)
-  useFrame((state) => {
-    if (groupRef.current) {
-      const t = state.clock.getElapsedTime()
-      groupRef.current.position.y = Math.sin(t * 1.2) * 0.02
-      groupRef.current.rotation.y = t * 0.25
-    }
-  })
-
-  return (
-    <group ref={groupRef} scale={0.75}>
-      <Center position={[0, 0, 0]}>
-        <mesh castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.9, 0]} />
-          <meshStandardMaterial
-            color="#22252a"
-            roughness={0.2}
-            metalness={0.8}
-            flatShading
-          />
-        </mesh>
-        <mesh scale={0.6}>
-          <icosahedronGeometry args={[0.7, 0]} />
-          <meshStandardMaterial
-            color="#F15723"
-            emissive="#F15723"
-            emissiveIntensity={0.5}
-            roughness={0.1}
-            metalness={0.9}
-          />
-        </mesh>
-      </Center>
-    </group>
-  )
-}
-
 // 3D 展品模型组件 (Exhibition Model Content)
 function ExhibitionModelContent({ isMobile }: { isMobile: boolean }) {
   const { scene } = useGLTF(
@@ -242,7 +205,7 @@ function About3DViewer({
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  if (hasContextLost || isMobile) {
+  if (hasContextLost) {
     return <AboutCharacterFallback onInteract={onInteract} />
   }
 
@@ -284,7 +247,7 @@ function About3DViewer({
           color="#ffffff"
         />
 
-        <Suspense fallback={<AboutFallbackModel />}>
+        <Suspense fallback={null}>
           <ExhibitionModelContent isMobile={isMobile} />
           {!isMobile ? (
             <ContactShadows
