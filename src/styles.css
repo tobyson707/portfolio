@@ -8923,8 +8923,9 @@ canvas {
   box-sizing: border-box;
 }
 
-/* Individual page card tightly wrapping the canvas */
-.pdf-page-card {
+/* Individual page card tightly wrapping the canvas or image */
+.pdf-page-card,
+.case-study-page-card {
   position: relative;
   border-radius: 4px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -8936,6 +8937,7 @@ canvas {
   font-size: 0;
   background: transparent;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 140px;
 }
 
 .pdf-page-canvas {
@@ -8947,8 +8949,39 @@ canvas {
   border-radius: 4px;
 }
 
+.case-study-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  border-radius: 4px;
+  transition: opacity 0.25s ease-in-out;
+}
+
+.case-study-image.is-loading {
+  opacity: 0;
+}
+
+.case-study-image.is-loaded {
+  opacity: 1;
+}
+
+.case-study-image-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+}
+
 /* Lazy loading skeleton placeholder for unrendered pages */
-.pdf-page-placeholder {
+.pdf-page-placeholder,
+.case-study-page-placeholder {
   position: absolute;
   inset: 0;
   background: var(--surface-raised);

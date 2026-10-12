@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { BRAND_PROJECTS, type BrandProject } from '../data/brandIdentityManifest'
 import { useStore } from '../store'
 
-const PdfPopupViewer = lazy(() => import('./PdfPopupViewer'))
+const CaseStudyViewer = lazy(() => import('./CaseStudyViewer'))
 
 const EASE = [0.22, 1, 0.36, 1]
 
@@ -99,10 +99,10 @@ export default function BrandingGallery({ onClose }: BrandingGalleryProps) {
         </article>
       </motion.div>
 
-      {/* PDF Popup Lightbox Viewer (Dynamically Loaded) */}
+      {/* Case Study Image-based Lightbox Viewer (Dynamically Loaded) */}
       {selectedProject && (
         <Suspense fallback={null}>
-          <PdfPopupViewer
+          <CaseStudyViewer
             project={selectedProject}
             isOpen={Boolean(selectedProject)}
             onClose={() => setSelectedProject(null)}
