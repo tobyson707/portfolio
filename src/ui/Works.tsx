@@ -9,6 +9,8 @@ import {
   type IllustrationImage,
 } from '../data/worksManifest'
 import ImageViewer from './ImageViewer'
+import ResponsiveImg from './ResponsiveImg'
+import ErrorBoundary from './ErrorBoundary'
 import Contact from './Contact'
 import BrandingGallery from './BrandingGallery'
 import ProductDesignView from './ProductDesignView'
@@ -24,8 +26,12 @@ import { useContentStore } from '../services/contentStore'
 import { trackWorkView } from '../services/analytics'
 import { isMobileDevice } from '../utils/device'
 import { useStore } from '../store'
+import { useModalLock } from '../hooks/useModalLock'
 
 const EASE = [0.22, 1, 0.36, 1]
+
+// Overlays opened on top of a Works detail; Escape must close these before the detail itself
+const NESTED_OVERLAY_SELECTOR = '.wk-viewer-root, .product-detail-modal-root, .sturvs-artwork-viewer'
 
 // 一张全高板块卡：左侧分类信息，右侧配图，下方紧跟作品清单
 function SectionCard({
@@ -104,10 +110,13 @@ function SectionCard({
           }}
         >
           {cover && !coverError ? (
-            <img
+            <ResponsiveImg
               src={cover}
+              sizes="(max-width: 1150px) 26vw, 300px"
+              maxWidth={isMobileDevice() ? 640 : 960}
               alt={altText}
               loading="lazy"
+              decoding="async"
               draggable={false}
               onError={() => setCoverError(true)}
             />
@@ -376,12 +385,15 @@ function WorkDetail({
                           image.width && image.height ? `${image.width} / ${image.height}` : undefined,
                       }}
                     >
-                      <img
-                        src={encodeURI(image.src)}
+                      <ResponsiveImg
+                        src={image.src}
+                        sizes="(max-width: 600px) 92vw, (max-width: 960px) 46vw, 31vw"
+                        maxWidth={isMobile ? 960 : 1600}
                         alt=""
                         className="wk-masonry-img"
                         draggable={false}
                         loading="lazy"
+                        decoding="async"
                         onError={() => {
                           reportMissingImage(image.src, image.category || item.name || 'Gallery')
                         }}
@@ -515,14 +527,18 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
     const measure = () => {
       setScrollRange(Math.max(0, el.scrollWidth - window.innerWidth))
     }
+    let cancelled = false
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     window.addEventListener('resize', measure)
     if (document.fonts) {
-      document.fonts.ready.then(measure)
+      document.fonts.ready.then(() => {
+        if (!cancelled) measure()
+      })
     }
     return () => {
+      cancelled = true
       ro.disconnect()
       window.removeEventListener('resize', measure)
     }
@@ -538,10 +554,14 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
       }
     }
     window.addEventListener('hashchange', handleHash)
+    let initialTimer: number | undefined
     if (window.location.hash === '#contact' || window.location.hash === '#works') {
-      setTimeout(handleHash, 400)
+      initialTimer = window.setTimeout(handleHash, 400)
     }
-    return () => window.removeEventListener('hashchange', handleHash)
+    return () => {
+      window.clearTimeout(initialTimer)
+      window.removeEventListener('hashchange', handleHash)
+    }
   }, [])
 
   // px 数值插值（比 vw 字符串更顺）；竖滚行程与横移 1:1
@@ -588,10 +608,11 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
   // WORKS title fades out progressively as user scrolls toward Contact
   const worksTitleOpacity = useTransform(scrollYProgress, [0.75, 0.96], [1, 0])
 
-  // 详情打开时锁滚动 + ESC 关闭 + 隐藏全局浮动控件 (如 Back to Top 和 Navigation Menu) + 音频分类环境联动
-  useEffect(() => {
-    useStore.getState().setIsModalOpen(Boolean(active))
+  // 详情打开时锁滚动 + 隐藏全局浮动控件 (如 Back to Top 和 Navigation Menu)：ref-counted modal lock
+  useModalLock(Boolean(active))
 
+  // ESC 关闭 + 返回手势关闭 + 音频分类环境联动
+  useEffect(() => {
     if (!active) {
       useStore.getState().setSelectedCategory(null)
       return
@@ -602,29 +623,24 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      // If ImageViewer is active, let it close first without closing category
-      if (document.querySelector('.wk-viewer-root')) return
+      // A nested overlay (image viewer, case study, product project, Sturvs artwork) closes first
+      if (document.querySelector(NESTED_OVERLAY_SELECTOR)) return
       closeDetail()
     }
 
     const handlePopState = () => {
-      // If user swipes back or clicks browser back, dismiss the modal
-      if (document.querySelector('.wk-viewer-root')) {
-        // If image viewer open, it handles its own popstate or ESC
-        return
-      }
+      // Sturvs pushes and manages its own history entries (canvas + focused artwork)
+      if (document.querySelector('.sturvs-canvas-overlay')) return
+      // Browser back / swipe-back dismisses the detail together with any nested viewer inside it,
+      // since the detail owns the history entry that was just popped.
       setActive(null)
     }
 
     window.addEventListener('keydown', onKey)
     window.addEventListener('popstate', handlePopState)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('popstate', handlePopState)
-      document.body.style.overflow = prev
-      useStore.getState().setIsModalOpen(false)
       useStore.getState().setSelectedCategory(null)
     }
   }, [active])
@@ -780,6 +796,11 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
         </div>
       </div>
 
+      <ErrorBoundary
+        name="Works detail overlay"
+        resetKey={active}
+        onError={() => closeDetail()}
+      >
       <AnimatePresence>
         {active && isBranding && <BrandingGallery key="branding-gallery" onClose={closeDetail} />}
         {active && isProductDesign && (
@@ -795,6 +816,7 @@ export default function Works({ lang, innerRef }: { lang: 'en'; innerRef: Ref<HT
           />
         )}
       </AnimatePresence>
+      </ErrorBoundary>
     </section>
   )
 }

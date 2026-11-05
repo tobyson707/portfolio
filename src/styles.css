@@ -2386,6 +2386,8 @@ canvas {
   position: relative;
   z-index: 10;
   pointer-events: auto;
+  /* Horizontal swipes navigate images; let the browser keep only vertical panning here */
+  touch-action: pan-y;
   display: flex;
   flex-direction: column;
   align-items: center;

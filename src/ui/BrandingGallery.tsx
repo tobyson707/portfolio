@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { motion } from 'framer-motion'
 import { BRAND_PROJECTS, type BrandProject } from '../data/brandIdentityManifest'
 import { useStore } from '../store'
+import { useModalLock } from '../hooks/useModalLock'
 
 const CaseStudyViewer = lazy(() => import('./CaseStudyViewer'))
 
@@ -13,17 +14,15 @@ export interface BrandingGalleryProps {
 
 export default function BrandingGallery({ onClose }: BrandingGalleryProps) {
   const [selectedProject, setSelectedProject] = useState<BrandProject | null>(null)
-  const setIsModalOpen = useStore((s) => s.setIsModalOpen)
+  useModalLock()
 
-  // Sync modal and category audio state when opening Branding & Identity
+  // Sync category audio state when opening Branding & Identity
   useEffect(() => {
-    setIsModalOpen(true)
     useStore.getState().setSelectedCategory('BRANDING & IDENTITY')
     return () => {
-      setIsModalOpen(false)
       useStore.getState().setSelectedCategory(null)
     }
-  }, [setIsModalOpen])
+  }, [])
 
   // Esc key listener when popup is closed
   useEffect(() => {

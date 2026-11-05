@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BrandProject, CaseStudyImage } from '../data/brandIdentityManifest'
-import { useStore } from '../store'
+import { useModalLock } from '../hooks/useModalLock'
 import { isMobileDevice } from '../utils/device'
+import ResponsiveImg from './ResponsiveImg'
 
 export interface CaseStudyViewerProps {
   project: BrandProject
@@ -51,8 +52,12 @@ const CaseStudyImageCard = React.memo(function CaseStudyImageCard({
     return () => observer.disconnect()
   }, [image.pageNumber, onVisible])
 
-  // Safely encode URI for paths containing spaces (e.g. "funky frames webp")
-  const encodedSrc = encodeURI(image.src)
+  // Rendered width follows the zoom scale, so let the browser upgrade resolution when zooming in.
+  // On mobile the candidate ceiling stays bounded so a long case study cannot exhaust memory.
+  const sizes = isMobile
+    ? `${Math.round(scale * 100)}vw`
+    : `calc(${scale} * min(1400px, 92vw))`
+  const maxWidth = isMobile ? (scale > 1.2 ? 1600 : 960) : Infinity
 
   return (
     <div
@@ -82,8 +87,10 @@ const CaseStudyImageCard = React.memo(function CaseStudyImageCard({
         </div>
       )}
 
-      <img
-        src={encodedSrc}
+      <ResponsiveImg
+        src={image.src}
+        sizes={sizes}
+        maxWidth={maxWidth}
         alt={image.alt}
         loading={index < 2 ? 'eager' : 'lazy'}
         decoding="async"
@@ -101,7 +108,6 @@ export default function CaseStudyViewer({
   isOpen,
   onClose,
 }: CaseStudyViewerProps) {
-  const setIsModalOpen = useStore((s) => s.setIsModalOpen)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [visiblePage, setVisiblePage] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
@@ -113,18 +119,8 @@ export default function CaseStudyViewer({
   // Track visibility ratios of each image card to compute active page number
   const pageRatiosRef = useRef<Map<number, number>>(new Map())
 
-  // Synchronize modal state & body scroll lock
-  useEffect(() => {
-    if (!isOpen) return
-    setIsModalOpen(true)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      setIsModalOpen(false)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [isOpen, setIsModalOpen])
+  // Synchronize modal state & body scroll lock (ref-counted: the parent gallery keeps its lock on close)
+  useModalLock(isOpen)
 
   // Reset page indicator and zoom when project changes or reopens
   useEffect(() => {

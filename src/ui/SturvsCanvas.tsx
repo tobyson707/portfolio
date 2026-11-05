@@ -8,6 +8,11 @@ import {
   type SturvsArtwork,
 } from '../data/sturvsManifest'
 import { useStore } from '../store'
+import { useModalLock } from '../hooks/useModalLock'
+import { isMobileDevice } from '../utils/device'
+import ResponsiveImg from './ResponsiveImg'
+
+const IS_MOBILE = isMobileDevice()
 
 export interface SturvsCanvasProps {
   onClose: () => void
@@ -85,8 +90,11 @@ const ArtworkCard = React.memo(function ArtworkCard({
       }}
     >
       <div className="sturvs-artwork-frame" style={{ aspectRatio: currentRatio }}>
-        <img
+        <ResponsiveImg
           src={artwork.src}
+          // Sized for the deepest zoom so zooming in stays sharp; the mobile cap bounds memory.
+          sizes={`${Math.round(artwork.width * STURVS_CANVAS_CONFIG.maxZoom)}px`}
+          maxWidth={IS_MOBILE ? 960 : 2400}
           alt={artwork.title || 'Artwork'}
           loading="lazy"
           decoding="async"
@@ -109,7 +117,6 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
   const worldRef = useRef<HTMLDivElement>(null)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const lastFocusedTriggerRef = useRef<HTMLElement | null>(null)
-  const setIsModalOpen = useStore((s) => s.setIsModalOpen)
   const shouldReduceMotion = useReducedMotion()
 
   // Selected Artwork Presentation state (one authoritative state)
@@ -288,15 +295,14 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
     setDisplayedZoom(Math.round(zoomRef.current * 100))
   }, [applyTransform])
 
-  // Set modal open state to unmount global navigation menu and activate SUBMERGED audio
+  // Modal lock (hides global navigation menu, locks body scroll) and SUBMERGED audio category
+  useModalLock()
   useEffect(() => {
-    setIsModalOpen(true)
     useStore.getState().setSelectedCategory('STURVS')
     return () => {
-      setIsModalOpen(false)
       useStore.getState().setSelectedCategory(null)
     }
-  }, [setIsModalOpen])
+  }, [])
 
   // Push and sync history state so back gestures close canvas/viewer smoothly
   useEffect(() => {
@@ -350,11 +356,8 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
     }
   }, [])
 
-  // Lock body overflow and handle browser history
+  // Handle browser history (body scroll lock is owned by useModalLock)
   useEffect(() => {
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
     const handlePopState = () => {
       if (selectedArtwork) {
         setSelectedArtwork(null)
@@ -365,7 +368,6 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
     window.addEventListener('popstate', handlePopState)
 
     return () => {
-      document.body.style.overflow = prevOverflow
       window.removeEventListener('popstate', handlePopState)
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current)
@@ -469,7 +471,7 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
   }, [onClose, selectedArtwork, handleCloseViewer, handleZoomStep, fitAllToView])
 
   // Trackpad 2-finger pan and Ctrl/Meta zoom
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  const handleWheel = (e: WheelEvent) => {
     if (selectedArtwork) return
     setHasInteracted(true)
 
@@ -485,6 +487,18 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
       requestFrame()
     }
   }
+
+  // React registers wheel listeners as passive, so preventDefault() there cannot stop the browser's
+  // own ctrl/⌘ + wheel (trackpad pinch) page zoom. Attach a native non-passive listener instead.
+  const wheelHandlerRef = useRef(handleWheel)
+  wheelHandlerRef.current = handleWheel
+  useEffect(() => {
+    const el = viewportRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => wheelHandlerRef.current(e)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   // Pointer drag event handlers with proper separation between CLICK and PAN
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -677,7 +691,6 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
         <div
           ref={viewportRef}
           className={`sturvs-viewport ${isDraggingState ? 'is-dragging' : ''} ${selectedArtwork ? 'is-focus-mode' : ''}`}
-          onWheel={handleWheel}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -822,8 +835,10 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <img
+                  <ResponsiveImg
                     src={selectedArtwork.src}
+                    sizes="90vw"
+                    maxWidth={IS_MOBILE ? 1600 : Infinity}
                     alt={selectedArtwork.title || 'Artwork'}
                     className="sturvs-viewer-img sturvs-focus-img"
                     draggable={false}

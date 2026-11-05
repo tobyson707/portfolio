@@ -2,7 +2,11 @@ import { useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { reportMissingImage, type IllustrationImage } from '../data/worksManifest'
-import { useStore } from '../store'
+import { useModalLock } from '../hooks/useModalLock'
+import { isMobileDevice } from '../utils/device'
+import ResponsiveImg from './ResponsiveImg'
+
+const isMobile = isMobileDevice()
 
 export interface ImageViewerProps {
   images: IllustrationImage[]
@@ -34,25 +38,9 @@ export default function ImageViewer({
     onNavigate((currentIndex + 1) % total)
   }, [total, currentIndex, onNavigate])
 
-  const setIsModalOpen = useStore((s) => s.setIsModalOpen)
-
-  // Sync global modal open state to prevent menu overlap
-  useEffect(() => {
-    setIsModalOpen(isOpen)
-    return () => {
-      setIsModalOpen(false)
-    }
-  }, [isOpen, setIsModalOpen])
-
-  // Prevent background scrolling while viewer is open
-  useEffect(() => {
-    if (!isOpen) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prevOverflow
-    }
-  }, [isOpen])
+  // Global modal state (hides menu / back-to-top) + background scroll lock while the viewer is open.
+  // Ref-counted, so closing the viewer keeps the parent gallery's lock intact.
+  useModalLock(isOpen)
 
   // Keyboard navigation: ArrowLeft, ArrowRight, Escape
   useEffect(() => {
@@ -87,15 +75,6 @@ export default function ImageViewer({
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return
-    const diffX = Math.abs(e.touches[0].clientX - touchStartX.current)
-    const diffY = Math.abs(e.touches[0].clientY - touchStartY.current)
-    if (diffX > diffY && diffX > 10) {
-      if (e.cancelable) e.preventDefault()
-    }
   }
 
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -207,7 +186,6 @@ export default function ImageViewer({
             className="wk-viewer-container"
             onClick={(e) => e.stopPropagation()}
             onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
             <AnimatePresence mode="wait">
@@ -219,8 +197,10 @@ export default function ImageViewer({
                 transition={{ duration: 0.22, ease: EASE }}
                 className="wk-viewer-media-wrapper"
               >
-                <img
-                  src={encodeURI(currentImage.src)}
+                <ResponsiveImg
+                  src={currentImage.src}
+                  sizes="90vw"
+                  maxWidth={isMobile ? 1600 : Infinity}
                   alt={currentImage.title}
                   className="wk-viewer-img"
                   draggable={false}

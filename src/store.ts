@@ -17,6 +17,8 @@ interface StoreState {
   heroEnvError: string | null
   isFallbackActive: boolean
   isModalOpen: boolean
+  /** Number of overlays currently holding the modal lock (see acquireModalLock). */
+  modalLockCount: number
   isMenuOpen: boolean
   pendingScrollTarget: string | null
   isAboutOpen: boolean
@@ -36,7 +38,12 @@ interface StoreState {
   setHeroEnvStatus: (status: 'idle' | 'loading' | 'loaded' | 'ready' | 'error', error?: string | null) => void
   setHeroEnvProgress: (progress: number) => void
   setFallbackActive: (active: boolean) => void
-  setIsModalOpen: (open: boolean) => void
+  /**
+   * Registers an open full-screen overlay. Returns a release function.
+   * Ref-counted so nested overlays (gallery → image viewer / case study) cannot clear
+   * each other's state; also owns the body scroll lock for the same reason.
+   */
+  acquireModalLock: () => () => void
   setIsMenuOpen: (open: boolean) => void
   setPendingScrollTarget: (target: string | null) => void
   setIsAboutOpen: (open: boolean) => void
@@ -71,6 +78,9 @@ const applyThemeToDOM = (theme: 'light' | 'dark') => {
   }
 }
 
+// Body overflow value captured when the first modal lock is acquired, restored when the last is released
+let savedBodyOverflow = ''
+
 const initialTheme = getInitialTheme()
 applyThemeToDOM(initialTheme)
 
@@ -90,6 +100,7 @@ export const useStore = create<StoreState>((set) => ({
   heroEnvError: null,
   isFallbackActive: false,
   isModalOpen: false,
+  modalLockCount: 0,
   isMenuOpen: false,
   pendingScrollTarget: null,
   isAboutOpen: false,
@@ -133,7 +144,27 @@ export const useStore = create<StoreState>((set) => ({
       heroEnvProgress: Math.max(state.heroEnvProgress, progress),
     })),
   setFallbackActive: (active) => set({ isFallbackActive: active }),
-  setIsModalOpen: (open) => set({ isModalOpen: open }),
+  acquireModalLock: () => {
+    set((state) => {
+      if (state.modalLockCount === 0 && typeof document !== 'undefined') {
+        savedBodyOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+      }
+      return { modalLockCount: state.modalLockCount + 1, isModalOpen: true }
+    })
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      set((state) => {
+        const next = Math.max(0, state.modalLockCount - 1)
+        if (next === 0 && state.modalLockCount > 0 && typeof document !== 'undefined') {
+          document.body.style.overflow = savedBodyOverflow
+        }
+        return { modalLockCount: next, isModalOpen: next > 0 }
+      })
+    }
+  },
   setIsMenuOpen: (open) => set({ isMenuOpen: open }),
   setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
   setIsAboutOpen: (open) =>

@@ -41,25 +41,36 @@ export default function Env({
   const scene = useThree((s) => s.scene)
   const gl = useThree((s) => s.gl)
   const [texture, setTexture] = useState<THREE.Texture | null>(() => cachedEnvMap)
+  // Bumped when the WebGL context is restored so the PMREM environment is regenerated.
+  // (A PMREM render target has no CPU-side source, so three.js cannot re-upload it by itself.)
+  const [restoreToken, setRestoreToken] = useState(0)
 
-  // Invalidate cached texture if the WebGL context is lost
+  // Invalidate cached texture if the WebGL context is lost; rebuild it once the context is restored
   useEffect(() => {
     const dom = gl?.domElement
     if (!dom) return
     const handleContextLost = () => {
-      console.warn('[Env] WebGL Context lost, resetting environment texture cache')
+      console.warn('[Env] WebGL context lost, releasing environment texture')
       if (cachedEnvMap) {
         try {
           cachedEnvMap.dispose()
-        } catch {
-          // ignore
+        } catch (err) {
+          console.warn('[Env] Failed to dispose environment texture after context loss:', err)
         }
         cachedEnvMap = null
       }
-      heroModelManager.setEnvStatus('loading')
+      setTexture(null)
+    }
+    const handleContextRestored = () => {
+      console.warn('[Env] WebGL context restored, regenerating environment')
+      setRestoreToken((t) => t + 1)
     }
     dom.addEventListener('webglcontextlost', handleContextLost)
-    return () => dom.removeEventListener('webglcontextlost', handleContextLost)
+    dom.addEventListener('webglcontextrestored', handleContextRestored)
+    return () => {
+      dom.removeEventListener('webglcontextlost', handleContextLost)
+      dom.removeEventListener('webglcontextrestored', handleContextRestored)
+    }
   }, [gl])
 
   useEffect(() => {
@@ -137,7 +148,7 @@ export default function Env({
         cachedEnvMap = null
       }
     }
-  }, [gl])
+  }, [gl, restoreToken])
 
   const initialBg = useRef<any>(null)
   useEffect(() => {

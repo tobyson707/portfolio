@@ -13,6 +13,7 @@ import NavigationMenu from './ui/NavigationMenu'
 import AboutPage from './ui/AboutPage'
 import NotFoundPage from './ui/NotFoundPage'
 import BackToTop from './ui/BackToTop'
+import ErrorBoundary from './ui/ErrorBoundary'
 import { useStore } from './store'
 import { SITE_CONTENT } from './data/siteContent'
 import { scrollToWorks, scrollToContact } from './utils/scroll'
@@ -225,6 +226,7 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
 function HomeView() {
   const theme = useStore((s) => s.theme)
   const isAboutOpen = useStore((s) => s.isAboutOpen)
+  const isModalOpen = useStore((s) => s.isModalOpen)
   const heroContent = useContentStore((s) => s.site.hero)
   const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
@@ -301,7 +303,10 @@ function HomeView() {
       <div className="scene-bg">
         <CanvasErrorBoundary>
           <Canvas
-            frameloop={isAboutOpen ? 'never' : 'always'}
+            // Stop rendering while the scene is fully covered: About always, and on mobile also while a
+            // Works overlay is open. There the scene is static (scroll locked, no mouse parallax), so pausing
+            // is visually lossless, and it frees the GPU / memory headroom the gallery images need.
+            frameloop={isAboutOpen || (isMobileScreen && isModalOpen) ? 'never' : 'always'}
             shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
             dpr={getSafeDpr()}
             camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
@@ -433,6 +438,13 @@ function PublicPortfolio() {
         path === '/resume' ||
         path === '/contact'
       ) {
+        // Already on the home view with About closed: this is a hash-only history entry
+        // (e.g. #paintings / #sturvs pushed by a Works overlay, which closes itself on popstate).
+        // Treating it as page navigation used to scroll the page back to the top whenever a project
+        // was closed with the browser back button or the mobile swipe-back gesture.
+        const { isAboutOpen: aboutOpen, currentView: view } = useStore.getState()
+        if (!aboutOpen && view === 'home') return
+
         setIsAboutOpen(false)
         useStore.getState().setCurrentView('home')
         const state = e.state as { fromHome?: boolean; target?: string } | null
@@ -577,6 +589,40 @@ function PublicPortfolio() {
   )
 }
 
+function AppCrashFallback() {
+  return (
+    <div
+      role="alert"
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        padding: 24,
+        textAlign: 'center',
+        background: 'var(--background, #0D0D0F)',
+        color: 'var(--text, #f2f2f2)',
+        fontFamily: 'Poppins, system-ui, sans-serif',
+      }}
+    >
+      <p style={{ margin: 0, letterSpacing: '0.08em' }}>SOMETHING BROKE ON MY END.</p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        style={{ padding: '10px 22px', borderRadius: 999, border: '1px solid currentColor', background: 'transparent', color: 'inherit', cursor: 'pointer' }}
+      >
+        RELOAD
+      </button>
+    </div>
+  )
+}
+
 export default function App() {
-  return <PublicPortfolio />
+  return (
+    <ErrorBoundary name="Portfolio" fallback={<AppCrashFallback />}>
+      <PublicPortfolio />
+    </ErrorBoundary>
+  )
 }

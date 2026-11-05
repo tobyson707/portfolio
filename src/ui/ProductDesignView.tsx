@@ -6,6 +6,7 @@ import {
   type ProductDesignMediaItem,
 } from '../data/productDesignManifest'
 import { useStore } from '../store'
+import { useModalLock } from '../hooks/useModalLock'
 
 const EASE = [0.22, 1, 0.36, 1]
 
@@ -69,6 +70,18 @@ function CaseStudyVideo({ src, poster }: CaseStudyVideoProps) {
       observer.disconnect()
     }
   }, [src])
+
+  // Release the media decoder immediately on unmount (iOS otherwise keeps decoded frames
+  // alive after the element is detached). Unmount-only so it never strips a freshly set src.
+  useEffect(() => {
+    const video = videoRef.current
+    return () => {
+      if (!video) return
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+    }
+  }, [])
 
   return (
     <video
@@ -254,21 +267,16 @@ function ProjectDetailModal({ project, onClose }: ProjectDetailModalProps) {
 // -----------------------------------------------------------
 export default function ProductDesignView({ onClose }: ProductDesignViewProps) {
   const [selectedProject, setSelectedProject] = useState<ProductDesignProject | null>(null)
-  const setIsModalOpen = useStore((s) => s.setIsModalOpen)
+  // Global modal state + body scroll lock (ref-counted)
+  useModalLock()
 
-  // Sync global modal state, body scroll lock, and category audio state
+  // Sync category audio state
   useEffect(() => {
-    setIsModalOpen(true)
     useStore.getState().setSelectedCategory('PRODUCT DESIGN')
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
     return () => {
-      setIsModalOpen(false)
       useStore.getState().setSelectedCategory(null)
-      document.body.style.overflow = prevOverflow
     }
-  }, [setIsModalOpen])
+  }, [])
 
   // Top level Escape listener when detail modal is not open
   useEffect(() => {
