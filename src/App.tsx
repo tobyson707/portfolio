@@ -225,6 +225,9 @@ function Hero({ cueOpacity }: { cueOpacity: MotionValue<number> }) {
 function HomeView() {
   const theme = useStore((s) => s.theme)
   const isAboutOpen = useStore((s) => s.isAboutOpen)
+  // Pause the 3D background while a work/case study is open so its GPU memory
+  // is not competing with the gallery on mobile.
+  const isModalOpen = useStore((s) => s.isModalOpen)
   const heroContent = useContentStore((s) => s.site.hero)
   const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
@@ -301,7 +304,7 @@ function HomeView() {
       <div className="scene-bg">
         <CanvasErrorBoundary>
           <Canvas
-            frameloop={isAboutOpen ? 'never' : 'always'}
+            frameloop={isAboutOpen || isModalOpen ? 'never' : 'always'}
             shadows={isMobileScreen ? false : { type: THREE.PCFShadowMap }}
             dpr={getSafeDpr()}
             camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
