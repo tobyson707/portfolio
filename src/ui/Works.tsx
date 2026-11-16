@@ -25,6 +25,14 @@ import { trackWorkView } from '../services/analytics'
 import { isMobileDevice } from '../utils/device'
 import { useStore } from '../store'
 
+
+// Grid tiles use small pre-generated thumbnails (scripts/generate-thumbs.mjs);
+// the full-resolution file is only loaded in the ImageViewer.
+function toThumbSrc(src: string): string {
+  if (!src.startsWith('/images/works/')) return src
+  return src.replace('/images/works/', '/images/works-thumbs/').replace(/\.(png|jpe?g|avif|webp)$/i, '.webp')
+}
+
 const EASE = [0.22, 1, 0.36, 1]
 
 // 一张全高板块卡：左侧分类信息，右侧配图，下方紧跟作品清单
@@ -377,12 +385,21 @@ function WorkDetail({
                       }}
                     >
                       <img
-                        src={encodeURI(image.src)}
+                        src={encodeURI(toThumbSrc(image.src))}
                         alt=""
                         className="wk-masonry-img"
+                        decoding="async"
                         draggable={false}
                         loading="lazy"
-                        onError={() => {
+                        onError={(event) => {
+                          const img = event.currentTarget
+                          const full = encodeURI(image.src)
+                          // Thumbnail missing: fall back to the original file once
+                          if (!img.dataset.fallback && img.getAttribute('src') !== full) {
+                            img.dataset.fallback = '1'
+                            img.src = full
+                            return
+                          }
                           reportMissingImage(image.src, image.category || item.name || 'Gallery')
                         }}
                       />
