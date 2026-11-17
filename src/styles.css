@@ -5041,13 +5041,18 @@ canvas {
   /* Bottom theme-aware contrast gradient for mobile */
   .hero-mobile-gradient {
     position: absolute;
-    inset-x: 0;
+    /* left/right (not "inset-x", which isn't CSS) so the fade spans the screen */
+    left: 0;
+    right: 0;
     bottom: 0;
-    height: 48vh;
+    height: 52vh;
+    /* Light mode: solid white behind the TOBI XP title so it reads over the
+       dark balaclava and chain */
     background: linear-gradient(
       to top,
       rgba(255, 255, 255, 1) 0%,
-      rgba(255, 255, 255, 0.72) 48%,
+      rgba(255, 255, 255, 0.94) 30%,
+      rgba(255, 255, 255, 0.6) 58%,
       rgba(255, 255, 255, 0) 100%
     );
     pointer-events: none;
@@ -5121,7 +5126,7 @@ canvas {
     line-height: 1.2;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: #3D4044;
+    color: #2A2C30;
     margin: 0;
     text-align: center;
     text-shadow: 0 1px 6px rgba(255, 255, 255, 0.8);
@@ -9304,5 +9309,86 @@ canvas {
   .sturvs-return-btn {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+}
+
+/* ==========================================================================
+   Light mode readability pass (text over the 3D scene and form fields)
+   ========================================================================== */
+[data-theme="light"] .editorial-stat-desc {
+  color: #2F3236;
+}
+
+[data-theme="light"] .wk-form-label {
+  color: #4B4D55;
+}
+
+[data-theme="light"] .wk-form-input,
+[data-theme="light"] .wk-form-textarea {
+  border-bottom-color: rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="light"] .wk-form-input::placeholder,
+[data-theme="light"] .wk-form-textarea::placeholder {
+  color: #7A7A85;
+}
+
+@media (max-width: 768px) {
+  /* Résumé cards were always dark; give light mode light cards */
+  [data-theme="light"] .tl-body {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  [data-theme="light"] .tl-period,
+  [data-theme="light"] .tl-group-sub {
+    color: #5A5D63;
+  }
+
+  [data-theme="light"] .tl-place,
+  [data-theme="light"] .tl-group-head {
+    color: #0D0D0F;
+  }
+
+  [data-theme="light"] .tl-role {
+    color: #2A2C30;
+  }
+
+  [data-theme="light"] .tl-points li {
+    color: #33363B;
+  }
+
+  [data-theme="light"] .timeline::before {
+    background: linear-gradient(rgba(241, 87, 35, 0.6), rgba(0, 0, 0, 0.12));
+  }
+
+  [data-theme="light"] .resume-title {
+    color: #0D0D0F;
+    text-shadow: 0 1px 12px rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* Phones: show "LET'S TALK" as a real heading above the contact card
+   (on desktop it stays as the faint oversized background word) */
+@media (max-width: 768px) {
+  .wk-contact-panel .wk-contact-bg-talk {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: 100%;
+    margin: 24px 0 24px;
+    font-size: clamp(2.8rem, 13vw, 4rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    opacity: 1;
+    color: #FFFFFF;
+    white-space: nowrap;
+    z-index: 5;
+  }
+
+  [data-theme="light"] .wk-contact-panel .wk-contact-bg-talk {
+    color: #0D0D0F;
   }
 }
