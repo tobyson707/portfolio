@@ -106,7 +106,9 @@ function Lights() {
       <Env
         intensity={c.envIntensity}
         rotationX={0}
-        rotationY={0}
+        /* Turned -90° so the HDRI's brightest area no longer rims the right
+           side of the head */
+        rotationY={-90}
         rotationZ={0}
         asBackground={false}
         bgIntensity={0.4}
