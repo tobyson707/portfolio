@@ -599,8 +599,10 @@ export default function AboutPage({ onClose }: AboutPageProps) {
   )
 }
 
-// Preload 3D mask model into memory cache
-if (typeof window !== 'undefined') {
+// Preload 3D mask model into memory cache (desktop only: on phones it would
+// sit in memory next to the hero scene and push iPhone Safari over its limit;
+// About still loads it on demand)
+if (typeof window !== 'undefined' && !isMobileDevice()) {
   try {
     useGLTF.preload(
       `${import.meta.env.BASE_URL}models/mask.glb`,
