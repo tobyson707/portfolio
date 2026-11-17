@@ -9,6 +9,20 @@ import {
 } from '../data/sturvsManifest'
 import { useStore } from '../store'
 
+// Sized copies made at build time by scripts/generate-thumbs.mjs. The originals
+// (up to 8600px) exhaust iPhone Safari's memory and make it reload the page.
+function sizedSrc(src: string, size: 'canvas' | 'focus'): string {
+  if (!src.startsWith('/assets/')) return src
+  return src.replace('/assets/', `/assets-sized/${size}/`).replace(/\.(png|jpe?g|avif|webp)$/i, '.webp')
+}
+
+// If a sized copy is missing, fall back to the original file once
+function fallbackToOriginal(img: HTMLImageElement, original: string) {
+  if (img.dataset.fallback) return
+  img.dataset.fallback = '1'
+  img.src = original
+}
+
 export interface SturvsCanvasProps {
   onClose: () => void
 }
@@ -86,7 +100,8 @@ const ArtworkCard = React.memo(function ArtworkCard({
     >
       <div className="sturvs-artwork-frame" style={{ aspectRatio: currentRatio }}>
         <img
-          src={artwork.src}
+          src={sizedSrc(artwork.src, 'canvas')}
+          onError={(e) => fallbackToOriginal(e.currentTarget, artwork.src)}
           alt={artwork.title || 'Artwork'}
           loading="lazy"
           decoding="async"
@@ -823,7 +838,8 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <img
-                    src={selectedArtwork.src}
+                    src={sizedSrc(selectedArtwork.src, 'focus')}
+                    onError={(e) => fallbackToOriginal(e.currentTarget, selectedArtwork.src)}
                     alt={selectedArtwork.title || 'Artwork'}
                     className="sturvs-viewer-img sturvs-focus-img"
                     draggable={false}
