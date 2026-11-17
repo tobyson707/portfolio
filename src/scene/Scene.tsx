@@ -34,6 +34,8 @@ const RESUME_FRAMES = M * FRAMES_PER_NODE // 履历区帧数：每节点 FRAMES_
 const WORKS_ENTRANCE = 50 // 作品区"入场"（画廊屏幕从底部滑入覆盖）占的帧数
 const FPS = 24 // 所有 clip @24fps 共享时间轴；相机动画总帧数运行时从 CameraAction clip 读（见 totalFrames）
 const NODE_LINE = 0.3 // 节点"终点"参考线：条目顶部到达视口该高度(从上 30%)时锁定为该节点
+// How long the eyes keep looking at a tap on phones before relaxing (ms)
+const EYE_TOUCH_HOLD_MS = 3000
 
 // 背景球，保证相机视野随主题落在画布上
 function GradientBackground() {
@@ -291,7 +293,29 @@ function Man2({
     return () => window.removeEventListener('mousemove', onMove)
   }, [])
 
-  // 移动端 / 触屏（无鼠标可跟随）：关闭眼睛跟随，眼睛保持默认朝向（使用前面初始化的 isMobile）。
+  // Phones / touch screens have no cursor, so the eyes follow taps instead:
+  // they look at the last touch point (tap or drag) and drift back to their
+  // resting gaze after a few seconds without touches.
+  const touchTarget = useRef<{ x: number; y: number } | null>(null)
+  const lastTouchAt = useRef(0)
+  useEffect(() => {
+    if (!isMobile.current) return
+    const onTouch = (e: TouchEvent) => {
+      const t = e.touches[0]
+      if (!t) return
+      touchTarget.current = {
+        x: (t.clientX / window.innerWidth) * 2 - 1,
+        y: -((t.clientY / window.innerHeight) * 2 - 1),
+      }
+      lastTouchAt.current = performance.now()
+    }
+    window.addEventListener('touchstart', onTouch, { passive: true })
+    window.addEventListener('touchmove', onTouch, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('touchmove', onTouch)
+    }
+  }, [])
   // 履历锚点 DOM 元素（决定当前播放到第几段）
   const anchorEls = useRef<any>(null)
   // 作品区画廊 DOM 元素（决定作品入场 / 横移阶段的帧）
@@ -479,8 +503,21 @@ function Man2({
       }
     }
 
-    // 4) 眼睛跟随（用当前激活相机做屏幕投影）；移动端 / 触屏则跳过
-    if (!eye.enabled || eyes.length === 0 || isMobile.current) return
+    // 4) Eye follow (screen projection with the active camera): the cursor on
+    // desktop, the last tap on phones
+    if (!eye.enabled || eyes.length === 0) return
+    let targetX = mouse.current.x
+    let targetY = mouse.current.y
+    if (isMobile.current) {
+      const touch = touchTarget.current
+      if (!touch || performance.now() - lastTouchAt.current > EYE_TOUCH_HOLD_MS) {
+        // No recent tap: ease back to the default gaze
+        for (const e of eyes) e.obj.quaternion.slerp(e.base, 0.08)
+        return
+      }
+      targetX = touch.x
+      targetY = touch.y
+    }
     const sx = eye.invertX ? -1 : 1
     const sy = eye.invertY ? -1 : 1
 
@@ -494,8 +531,8 @@ function Man2({
     ax /= eyes.length
     ay /= eyes.length
 
-    const mx = mouse.current.x - ax
-    const my = mouse.current.y - ay
+    const mx = targetX - ax
+    const my = targetY - ay
     const yawBase = sx * mx * THREE.MathUtils.degToRad(eye.maxYaw) * eye.gain
     const pitch = sy * -my * THREE.MathUtils.degToRad(eye.maxPitch) * eye.gain
 
