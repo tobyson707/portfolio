@@ -136,7 +136,11 @@ export default function SturvsPhoneCanvas({ onSelect, getSrc, onImageError }: Pr
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     stopMomentum()
-    containerRef.current?.setPointerCapture?.(e.pointerId)
+    try {
+      containerRef.current?.setPointerCapture?.(e.pointerId)
+    } catch {
+      // pointer capture is optional
+    }
     const p = localPoint(e)
     pointersRef.current.set(e.pointerId, p)
     if (pointersRef.current.size === 1) {
