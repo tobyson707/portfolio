@@ -228,11 +228,6 @@ function HomeView() {
   // Pause the 3D background while a work/case study is open so its GPU memory
   // is not competing with the gallery on mobile.
   const isModalOpen = useStore((s) => s.isModalOpen)
-  // Temporary diagnostics for the iPhone reload: ?no3d=1 removes the 3D scene
-  // once the site has loaded (see also ?noblur=1 in main.tsx)
-  const entered = useStore((s) => s.entered)
-  const debugNo3d =
-    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('no3d') === '1'
   const heroContent = useContentStore((s) => s.site.hero)
   const pendingScrollTarget = useStore((s) => s.pendingScrollTarget)
   const setPendingScrollTarget = useStore((s) => s.setPendingScrollTarget)
@@ -310,7 +305,7 @@ function HomeView() {
         {/* iPhone Safari reloads the page when it runs out of memory. On phones,
             fully unmount the 3D scene (freeing its GPU memory) while a work is open;
             it remounts from cache when the work is closed. */}
-        {!(isModalOpen && isMobileScreen) && !(debugNo3d && entered) && (
+        {!(isModalOpen && isMobileScreen) && (
         <CanvasErrorBoundary>
           <Canvas
             frameloop={isAboutOpen || isModalOpen ? 'never' : 'always'}
