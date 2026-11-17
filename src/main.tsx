@@ -13,13 +13,4 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import './styles.css'
 
-// Temporary diagnostics for the iPhone reload: ?noblur=1 turns off blur and
-// GPU-layer CSS effects across the site
-if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('noblur') === '1') {
-  const style = document.createElement('style')
-  style.textContent =
-    '*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;will-change:auto!important}'
-  document.head.appendChild(style)
-}
-
 createRoot(document.getElementById('root')!).render(<App />)
