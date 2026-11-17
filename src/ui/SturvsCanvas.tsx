@@ -9,6 +9,7 @@ import {
 } from '../data/sturvsManifest'
 import { useStore } from '../store'
 import { isMobileDevice } from '../utils/device'
+import SturvsPhoneCanvas from './SturvsPhoneCanvas'
 
 // Sized copies made at build time by scripts/generate-thumbs.mjs. The originals
 // (up to 8600px) exhaust iPhone Safari's memory and make it reload the page.
@@ -122,7 +123,7 @@ const ArtworkCard = React.memo(function ArtworkCard({
 
 export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
-  // Phones get a plain scrolling grid instead of the infinite canvas: the canvas
+  // Phones get a lightweight infinite canvas (SturvsPhoneCanvas): the desktop one
   // repeats every artwork 9x over a ~17,000 x 9,000px layer, which runs iPhone
   // Safari out of memory and makes it reload the page.
   const [isPhone] = useState(() => isMobileDevice())
@@ -695,26 +696,11 @@ export default function SturvsCanvas({ onClose }: SturvsCanvasProps) {
 
         {/* Interactive Freeform Viewport with Infinite Seamless Ambient Dots */}
         {isPhone ? (
-          <div className="sturvs-phone-grid">
-            {STURVS_ARTWORKS.map((artwork) => (
-              <button
-                key={artwork.id}
-                type="button"
-                className="sturvs-phone-tile"
-                aria-label={`View ${artwork.title || 'Artwork'}`}
-                onClick={() => handleArtworkClick(artwork)}
-              >
-                <img
-                  src={sizedSrc(artwork.src, 'canvas')}
-                  onError={(e) => fallbackToOriginal(e.currentTarget, artwork.src)}
-                  alt={artwork.title || 'Artwork'}
-                  loading="lazy"
-                  decoding="async"
-                  draggable={false}
-                />
-              </button>
-            ))}
-          </div>
+          <SturvsPhoneCanvas
+            onSelect={handleArtworkClick}
+            getSrc={(src) => sizedSrc(src, 'canvas')}
+            onImageError={fallbackToOriginal}
+          />
         ) : (
         <div
           ref={viewportRef}
