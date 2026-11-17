@@ -302,6 +302,10 @@ function HomeView() {
 
       {/* 固定的背景：统一渲染高质量 3D 场景，并在移动端应用安全 DPR 与着色设置 */}
       <div className="scene-bg">
+        {/* iPhone Safari reloads the page when it runs out of memory. On phones,
+            fully unmount the 3D scene (freeing its GPU memory) while a work is open;
+            it remounts from cache when the work is closed. */}
+        {!(isModalOpen && isMobileScreen) && (
         <CanvasErrorBoundary>
           <Canvas
             frameloop={isAboutOpen || isModalOpen ? 'never' : 'always'}
@@ -334,6 +338,7 @@ function HomeView() {
             </Suspense>
           </Canvas>
         </CanvasErrorBoundary>
+        )}
       </div>
 
       {/* 滚动渐暗蒙层 */}
