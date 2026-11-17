@@ -7,10 +7,17 @@ import { trackContactInteraction, trackSocialClick } from '../services/analytics
 
 type ContactContent = typeof SITE_CONTENT.contact
 
+// Google Apps Script web app (businesstobixp@gmail.com, "TOBI XP Contact Form").
+// It saves each message to the "TOBI XP Contact Form" Google Sheet and emails
+// a notification you can reply to directly.
+const CONTACT_ENDPOINT =
+  'https://script.google.com/macros/s/AKfycbxqU-e4LcdvIJull0buYNL4bUSV4KRWdvYOwU3oYGkoDenqIfD5yl9AVqfeCu1grcH1MQ/exec'
+
 export default function Contact({ content: _content }: { content?: ContactContent }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
+  const [website, setWebsite] = useState('') // hidden spam trap; real visitors never fill it
   const [formStatus, setFormStatus] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -89,26 +96,43 @@ export default function Contact({ content: _content }: { content?: ContactConten
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (isSubmitting) return
     if (!name.trim() || !email.trim() || !message.trim()) {
       setFormStatus('Please fill in all fields.')
       return
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setFormStatus('Please enter a valid email address.')
+      return
+    }
 
     setIsSubmitting(true)
+    setFormStatus(null)
     trackContactInteraction('form_submit')
 
-    const subject = encodeURIComponent(`Project Inquiry — ${name.trim()}`)
-    const body = encodeURIComponent(
-      `Hi Tobi,\n\n${message.trim()}\n\nBest,\n${name.trim()}\n${email.trim()}`
-    )
-    window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`
-
-    setTimeout(() => {
+    try {
+      const res = await fetch(CONTACT_ENDPOINT, {
+        method: 'POST',
+        body: new URLSearchParams({
+          name: name.trim(),
+          email: email.trim(),
+          message: message.trim(),
+          website,
+        }),
+      })
+      const data = await res.json().catch(() => ({ ok: res.ok }))
+      if (!data.ok) throw new Error(data.error || 'Send failed')
+      setName('')
+      setEmail('')
+      setMessage('')
+      setFormStatus("Message sent. I'll get back to you soon!")
+    } catch {
+      setFormStatus(`Couldn't send right now. Email me at ${contactEmail} instead.`)
+    } finally {
       setIsSubmitting(false)
-      setFormStatus('Opening your email client...')
-    }, 400)
+    }
   }
 
   return (
@@ -217,6 +241,18 @@ export default function Contact({ content: _content }: { content?: ContactConten
                 />
               </div>
 
+              {/* Spam trap: hidden from people, but bots fill it in */}
+              <input
+                type="text"
+                name="website"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+              />
+
               <div className="wk-form-actions-row">
                 <button
                   type="submit"
@@ -224,7 +260,7 @@ export default function Contact({ content: _content }: { content?: ContactConten
                   disabled={isSubmitting}
                   aria-label="Send Message"
                 >
-                  <span>SEND MESSAGE</span>
+                  <span>{isSubmitting ? 'SENDING...' : 'SEND MESSAGE'}</span>
                   <span className="wk-submit-arrow" aria-hidden="true">
                     &#8599;
                   </span>
